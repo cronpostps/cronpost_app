@@ -25,14 +25,12 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // === FIX: Revert to standard Expo configuration ===
-  // This uses a generic web client ID for Expo Go development,
-  // and automatically switches to the native android/ios client IDs in production builds.
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: GoogleAuthConfig.expoClientId,
-    androidClientId: GoogleAuthConfig.androidClientId,
-    iosClientId: GoogleAuthConfig.iosClientId,
-  });
+// Code đã sửa
+const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+  // Xóa dòng clientId ở đây để expo-auth-session tự động chọn đúng ID cho từng nền tảng
+  androidClientId: GoogleAuthConfig.androidClientId,
+  iosClientId: GoogleAuthConfig.iosClientId,
+});
 
   useEffect(() => {
     async function handleGoogleResponse() {
