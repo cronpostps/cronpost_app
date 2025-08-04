@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "20463339441",
+    "project_id": "cronpost-cd22b",
+    "storage_bucket": "cronpost-cd22b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:20463339441:android:d96e5ff2f634b7482fdf90",
+        "android_client_info": {
+          "package_name": "com.cronpost.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCneYHMNSTNucpUmVlJw5J-pwzUpsOXwFo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

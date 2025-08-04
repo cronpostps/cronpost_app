@@ -1,32 +1,31 @@
-/**
- * This file contains the color palettes for both light and dark modes.
- */
+// src/constants/Colors.ts
+// Version: 1.1.0
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#ffffff';
+const tintColorLight = '#d96c00'; // Brand color for light theme from style.css
+const tintColorDark = '#ffa500';  // Brand color for dark theme from style.css
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#ffffff',
+    text: '#1c1c1c',
+    background: '#f0f0f0',
     tint: tintColorLight,
     icon: '#687076',
     tabIconDefault: '#687076',
     tabIconSelected: tintColorLight,
     inputBackground: '#ffffff',
-    inputBorder: '#ccc',
+    inputBorder: '#cccccc',
     buttonBackground: '#007bff',
     buttonText: '#ffffff',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
+    text: '#e0e0e0',
+    background: '#121212',
     tint: tintColorDark,
     icon: '#9BA1A6',
     tabIconDefault: '#9BA1A6',
     tabIconSelected: tintColorDark,
-    inputBackground: '#2c2c2e',
-    inputBorder: '#555',
+    inputBackground: '#2b3035',
+    inputBorder: '#495057',
     buttonBackground: '#007bff',
     buttonText: '#ffffff',
   },

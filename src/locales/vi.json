@@ -1228,5 +1228,16 @@
     "label_by": "Bởi:",
     "label_on": "Vào lúc:",
     "spinner_loading": "Đang tải..."
+  },
+  "themes": {
+    "light": "Sáng",
+    "dark": "Tối"
+  },
+  "tabs": {
+    "dashboard": "Bảng điều khiển",
+    "ucm": "UCM",
+    "iam": "Nhắn tin",
+    "scm": "SCM",
+    "settings": "Cài đặt"
   }
 }
