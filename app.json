@@ -19,7 +19,11 @@
         "NSFaceIDUsageDescription": "CronPost uses Face ID to securely unlock your account and verify critical actions.",
         "NSPhotoLibraryUsageDescription": "CronPost needs access to your photo library to allow you to select files for upload.",
         "UIDocumentPickerViewController": true,
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ]
       },
       "bundleIdentifier": "com.cronpost.app",
       "googleServicesFile": "./GoogleService-Info.plist"
@@ -29,12 +33,16 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
+      "edgeToEdgeEnabled": true,
       "package": "com.cronpost.app",
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.READ_CONTACTS",
-        "android.permission.READ_EXTERNAL_STORAGE"
-      ]
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "versionCode": 1,
+      "softwareKeyboardLayoutMode": "pan"
     },
     "notification": {
        "icon": "./assets/images/notification-icon.png"
@@ -51,7 +59,9 @@
         {
           "iCloudContainerEnvironment": "Production"
         }
-      ]
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging"
     ],
     "experiments": {
       "typedRoutes": true

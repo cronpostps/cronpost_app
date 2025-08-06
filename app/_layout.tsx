@@ -1,6 +1,7 @@
 // app/_layout.tsx
-// Version: 1.3.0
+// Version: 1.4.0
 
+import messaging from '@react-native-firebase/messaging';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
@@ -28,7 +29,7 @@ const InitialLayout = () => {
     } else if (!isAuthenticated && inAuthGroup) {
       router.replace('/');
     }
-  }, [isAuthenticated, isLoading, segments]);
+  }, [isAuthenticated, isLoading, segments, router]);
 
   if (isLoading) {
     return (
@@ -51,28 +52,51 @@ const InitialLayout = () => {
 };
 
 export default function RootLayout() {
-  // const router = useRouter();
+  // ----- BẮT ĐẦU CẬP NHẬT -----
+  const router = useRouter();
 
-  // // ----- BẮT ĐẦU CẬP NHẬT -----
-  // useEffect(() => {
-  //   // Listener này được kích hoạt khi người dùng NHẤN vào thông báo
-  //   const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-  //     console.log('Notification tapped:', response);
-  //     // Lấy dữ liệu đính kèm từ backend
-  //     const data = response.notification.request.content.data;
-      
-  //     if (data && data.thread_id) {
-  //       // Điều hướng đến màn hình chat của thread tương ứng
-  //       router.push(`/(main)/iam/thread/${data.thread_id}`);
-  //     }
-  //   });
+  useEffect(() => {
+    // Lắng nghe sự kiện khi người dùng nhấn vào thông báo (app đang chạy nền)
+    const unsubscribeFromOpen = messaging().onNotificationOpenedApp(remoteMessage => {
+      console.log(
+        'Notification caused app to open from background state:',
+        remoteMessage,
+      );
+      const { thread_id } = remoteMessage.data || {};
+      if (thread_id) {
+        // TODO: Mở comment khi luồng IAM đã được triển khai
+        // router.push(`/(main)/iam/thread/${thread_id}`);
+      }
+    });
 
-  //   return () => {
-  //     // Dọn dẹp listener khi component unmount
-  //     Notifications.removeNotificationSubscription(responseListener);
-  //   };
-  // }, []);
-  // // ----- KẾT THÚC CẬP NHẬT -----
+    // Kiểm tra nếu app được mở từ trạng thái tắt bằng một thông báo
+    messaging()
+      .getInitialNotification()
+      .then(remoteMessage => {
+        if (remoteMessage) {
+          console.log(
+            'Notification caused app to open from quit state:',
+            remoteMessage,
+          );
+          const { thread_id } = remoteMessage.data || {};
+          if (thread_id) {
+            // TODO: Mở comment khi luồng IAM đã được triển khai
+            // router.push(`/(main)/iam/thread/${thread_id}`);
+          }
+        }
+      });
+
+    // Lắng nghe sự kiện khi có thông báo đến lúc app đang mở
+    const unsubscribeFromForeground = messaging().onMessage(async remoteMessage => {
+      console.log('A new FCM message arrived in foreground!', remoteMessage);
+    });
+
+    return () => {
+      unsubscribeFromOpen();
+      unsubscribeFromForeground();
+    };
+  }, []);
+  // ----- KẾT THÚC CẬP NHẬT -----
   return (
     <ThemeProvider>
       <AuthProvider>

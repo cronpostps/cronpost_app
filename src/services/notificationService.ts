@@ -1,69 +1,52 @@
 // src/services/notificationService.ts
-// Version: 1.1.0
+// Version: 2.2.0 - Migrated to Firebase Modular SDK
 
-import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
-import api from '../api/api'; // Giả định bạn đã có một file cấu hình api client
+import messaging from '@react-native-firebase/messaging';
+import { PermissionsAndroid, Platform } from 'react-native';
+import api from '../api/api';
 
-/**
- * Cấu hình và đăng ký nhận push notification.
- * Hàm này sẽ hỏi quyền người dùng, lấy token và gửi lên server.
- * @returns {Promise<string|undefined>} ExpoPushToken nếu thành công, ngược lại là undefined.
- */
+async function requestUserPermission(): Promise<boolean> {
+  if (Platform.OS === 'ios') {
+    const authStatus = await messaging().requestPermission();
+    return (
+      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+      authStatus === messaging.AuthorizationStatus.PROVISIONAL
+    );
+  } else if (Platform.OS === 'android') {
+    if (Platform.Version < 33) return true;
+    const result = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+    );
+    return result === PermissionsAndroid.RESULTS.GRANTED;
+  }
+  return false;
+}
+
 export async function registerForPushNotificationsAsync(): Promise<string | undefined> {
-  let token;
-
-  if (!Device.isDevice) {
-    console.log('Push notifications only work on physical devices.');
-    return;
-  }
-
-  // --- Cài đặt cho Android ---
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FF231F7C',
-    });
-  }
-
-  // --- Hỏi quyền người dùng ---
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
-  if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-  if (finalStatus !== 'granted') {
+  const hasPermission = await requestUserPermission();
+  if (!hasPermission) {
     console.log('User did not grant permission for push notifications.');
     return;
   }
-  
-  // --- Lấy token và gửi lên server ---
   try {
-    token = (await Notifications.getExpoPushTokenAsync()).data;
-    console.log('Obtained Expo Push Token:', token);
-
-    // Gọi API đã tạo ở Bước 1.2
-    await api.post('/api/push/register', { token: token });
-    console.log('Successfully registered push token with the server.');
-
+    // Cú pháp mới không thay đổi nhiều ở đây
+    const token = await messaging().getToken();
+    console.log('Obtained FCM Token:', token);
+    if (token) {
+      await api.post('/api/push/register', { token });
+      console.log('Successfully registered FCM token with the server.');
+      return token;
+    }
   } catch (error) {
-    console.error('Failed to get or register push token:', error);
+    console.error('Failed to get or register FCM token:', error);
   }
-
-  return token;
 }
 
-/**
- * Hủy đăng ký nhận push notification.
- * Hàm này sẽ gọi API để xóa token khỏi server.
- */
 export async function unregisterFromPushNotificationsAsync(): Promise<void> {
   try {
-    // Gọi API đã tạo ở Bước 1.2
+    // Cú pháp mới không thay đổi nhiều ở đây
+    await messaging().deleteToken();
+    console.log('FCM token deleted from device.');
     await api.delete('/api/push/unregister');
     console.log('Successfully unregistered push token from the server.');
   } catch (error) {
