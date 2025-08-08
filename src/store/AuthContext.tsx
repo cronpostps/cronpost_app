@@ -1,14 +1,14 @@
 // src/store/AuthContext.tsx
-// Version: 1.9.6
+// Version: 1.9.7
 
 import * as Google from 'expo-auth-session/providers/google';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useRouter, useSegments } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import api from '../api/api';
-import PinModal from '../components/PinModal';
+import PinModal, { PinModalRef } from '../components/PinModal';
 import { GoogleAuthConfig } from '../config/googleAuthConfig';
 import { Colors } from '../constants/Colors';
 import i18n from '../locales/i18n';
@@ -23,6 +23,23 @@ interface User {
   notifications_enabled: boolean;
   timezone: string | null;
   date_format: string;
+  has_pin: boolean;
+  membership_type: 'free' | 'premium'; // Thêm hạng thành viên
+
+  // Thêm tất cả các trường giới hạn từ backend
+  limit_recipients_cronpost_email_free: number;
+  limit_recipients_in_app_messaging_free: number;
+  limit_recipients_user_email_free: number;
+  limit_recipients_cronpost_email_premium: number;
+  limit_recipients_in_app_messaging_premium: number;
+  limit_recipients_user_email_premium: number;
+
+  // Thêm các trường khác mà MessageComposer có thể cần
+  is_smtp_configured: boolean;
+  smtp_sender_email: string | null;
+  max_subject_length: number;
+  max_message_chars_free: number;
+  max_message_chars_premium: number;
 }
 
 interface TimezoneInfo {
@@ -82,7 +99,7 @@ const checkAndUpdateTimezone = async (
                 const updatedUserResponse = await api.get('/api/users/me');
                 setUser(updatedUserResponse.data);
                 Alert.alert(i18n.t('timezone_modal.title'), i18n.t('timezone_modal.success_message'));
-              } catch (error) {
+              } catch (error: any) {
                 console.error("Failed to update timezone:", error);
                 Alert.alert(i18n.t('timezone_modal.title'), translateApiError(error));
               }
@@ -91,7 +108,7 @@ const checkAndUpdateTimezone = async (
         ]
       );
     }
-  } catch (e) {
+  } catch (e: any) {
     console.error("Could not perform timezone check:", e);
   }
 };
@@ -114,21 +131,22 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
     const [pinModalVisible, setPinModalVisible] = useState(false);
     const [isVerifyingPin, setIsVerifyingPin] = useState(false);
     const [hasShownTimezoneAlert, setHasShownTimezoneAlert] = useState(false);
-    
+    const pinModalRef = useRef<PinModalRef>(null);
     const router = useRouter();
     const segments = useSegments();
     const { theme } = useTheme();
     const themeColors = Colors[theme];
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [_request, response, promptAsync] = Google.useAuthRequest({
         androidClientId: GoogleAuthConfig.androidClientId,
         iosClientId: GoogleAuthConfig.iosClientId,
-        expoClientId: GoogleAuthConfig.expoClientId,
+        clientId: GoogleAuthConfig.expoClientId,
     });
 
     const signOut = async () => {
       try { await api.post('/api/auth/signout'); } 
-      catch (e) { console.error('Sign out API call failed, proceeding with client-side logout.', e); } 
+      catch (e: any) { console.error('Sign out API call failed, proceeding with client-side logout.', e); } 
       finally {
         await SecureStore.deleteItemAsync(TOKEN_KEY);
         await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
@@ -154,7 +172,7 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
             console.error("Google Auth Error:", response.error);
             Alert.alert("Google Sign-In Error", "An error occurred during Google authentication.");
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Google Sign-In failed on backend:", error);
           Alert.alert("Google Sign-In Failed", "Could not sign in with Google. Please try again.");
         } finally {
@@ -172,7 +190,7 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
           if (accessToken) {
             setAuthState(prev => ({ ...prev, accessToken, isAuthenticated: true }));
             const userResponse = await api.get('/api/users/me');
-            const currentUser = userResponse.data;
+            const currentUser: User = userResponse.data;
             setUser(currentUser);
 
             const biometricsKey = `biometrics_enabled_for_${currentUser.id}`;
@@ -200,7 +218,8 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
             setAuthState({ accessToken: null, refreshToken: null, isAuthenticated: false });
             setIsAppLocked(false);
           }
-        } catch (e) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (_e: any) {
           signOut();
         } finally {
           setIsLoading(false);
@@ -239,7 +258,7 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
         const response = await api.post('/api/auth/signin', { email, password });
         const { access_token, refresh_token } = response.data;
         await handleSuccessfulLogin(access_token, refresh_token);
-      } catch (e) { console.error('Sign in failed', e); throw e; }
+      } catch (e: any) { console.error('Sign in failed', e); throw e; }
     };
   
     const signInWithGoogle = async () => {
@@ -252,11 +271,17 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
           const userResponse = await api.get('/api/users/me');
           setUser(userResponse.data);
           return userResponse.data;
-      } catch (error) {
+      } catch (error: any) {
           console.error("Failed to refresh user data", error);
           if (error.response?.status === 401) { signOut(); }
           return null;
       }
+    };
+
+    const handlePinClose = () => {
+        // Giữ cho modal luôn hiển thị để không thể bỏ qua bước nhập PIN
+        // Nếu cần, có thể thêm logic thoát ứng dụng ở đây
+        setPinModalVisible(true);
     };
 
     const handlePinSubmit = async (pin: string) => {
@@ -266,19 +291,22 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
             await api.post('/api/users/verify-pin-session', { pin_code: pin });
             setPinModalVisible(false);
             setIsAppLocked(false);
-        } catch (error) {
+        } catch (error: any) {
             Alert.alert(
                 i18n.t('pin_modal.header'),
-                translateApiError(error)
+                translateApiError(error),
+                [
+                    {
+                        text: 'OK',
+                        onPress: () => {
+                            pinModalRef.current?.resetPin();
+                        },
+                    },
+                ]
             );
         } finally {
             setIsVerifyingPin(false);
         }
-    };
-
-    const handlePinClose = () => {
-        setPinModalVisible(false);
-        signOut();
     };
   
     const value = { signIn, signInWithGoogle, signOut, user, isLoading, isAuthenticated: authState.isAuthenticated, refreshUser };
@@ -300,6 +328,7 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
         return (
             <View style={styles.lockScreenContainer}>
                 <PinModal
+                    ref={pinModalRef} 
                     isVisible={pinModalVisible}
                     onClose={handlePinClose}
                     onSubmit={handlePinSubmit}

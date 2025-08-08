@@ -1,9 +1,9 @@
 // src/components/MessageComposer.tsx
-// Version: 1.1.0
+// Version: 1.4.0
 
 import { Ionicons } from '@expo/vector-icons';
 import { TFunction } from 'i18next';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -35,6 +35,11 @@ import { useTheme } from '../store/ThemeContext';
 import { translateApiError } from '../utils/errorTranslator';
 
 // --- Interfaces & Types ---
+export interface MessageComposerRef {
+  getData: () => Promise<MessageData>;
+  hasUnsavedChanges: () => Promise<boolean>;
+}
+
 interface Contact {
   contact_email: string;
   display_name: string;
@@ -74,6 +79,7 @@ export interface MessageComposerProps {
   buttonSet: 'iam' | 'scm' | 'ucm';
   onAction: (action: ActionType, data: MessageData) => Promise<void>;
   onCancel: () => void;
+  onNavigateToSchedule?: (data: MessageData) => void;
 }
 
 interface ModalProps {
@@ -103,20 +109,68 @@ interface QuotePickerModalProps extends ModalProps {
 
 
 // --- Main Component ---
-export default function MessageComposer({
-    initialData,
-    sendingMethod,
-    buttonSet,
-    onAction,
-    onCancel,
-}: MessageComposerProps) {
+const MessageComposer = forwardRef<MessageComposerRef, MessageComposerProps>((props, ref) => {
+  const {
+      initialData,
+      sendingMethod,
+      buttonSet,
+      onAction,
+      onCancel,
+      onNavigateToSchedule,
+  } = props;
   const { t } = useTranslation();
   const { theme } = useTheme();
   const themeColors = Colors[theme];
   const { user } = useAuth();
 
+  const dynamicHeaderTitle = React.useMemo(() => {
+    const baseTitle = t('iam_page.btn_compose'); // "Compose"
+    const details = [];
+
+    // Thêm tiền tố (SCM, UCM) nếu có
+    if (buttonSet === 'scm') details.push('SCM');
+    if (buttonSet === 'ucm') details.push('UCM');
+
+    // Thêm phương thức gửi
+    switch (sendingMethod) {
+      case 'in_app_messaging':
+        details.push(t('scm_page.method_iam'));
+        break;
+      case 'cronpost_email':
+        details.push(t('scm_page.method_cp_email'));
+        break;
+      case 'user_email':
+        if (user?.is_smtp_configured && user.smtp_sender_email) {
+          // Định dạng đặc biệt cho SMTP
+          details.push(`SMTP (${user.smtp_sender_email})`);
+        } else {
+          details.push(t('scm_page.method_smtp'));
+        }
+        break;
+    }
+
+    // Kết hợp lại thành chuỗi cuối cùng
+    return `${baseTitle} (${details.join(' : ')})`;
+  }, [buttonSet, sendingMethod, user, t]);
+
   const richText = useRef<RichEditor>(null);
   
+  const recipientLimit = React.useMemo(() => {
+    if (!user) {
+      // Giá trị mặc định an toàn nếu chưa có thông tin user
+      return 1;
+    }
+    // Lấy hạng thành viên của user
+    const membership = user.membership_type || 'free';
+    
+    // Tự động tạo ra key để lấy đúng giá trị giới hạn từ user object
+    // Ví dụ: 'limit_recipients_cronpost_email_premium'
+    const limitKey = `limit_recipients_${sendingMethod}_${membership}`;
+
+    // Lấy giá trị giới hạn từ user object và trả về, có giá trị dự phòng là 1
+    return (user as any)[limitKey] || 1;
+  }, [user, sendingMethod]);
+
   // --- State Management ---
   const [recipients, setRecipients] = useState<string[]>(initialData?.recipients || []);
   const [recipientInput, setRecipientInput] = useState('');
@@ -128,6 +182,46 @@ export default function MessageComposer({
   const [userFiles, setUserFiles] = useState<AttachmentFile[]>([]);
   const [groupedQuoteFolders, setGroupedQuoteFolders] = useState<GroupedQuoteFolders[]>([]);
   const [isLoading, setIsLoading] = useState({ contacts: false, files: false, quotes: false });
+
+  // Thêm hook này để component cha có thể gọi hàm getData()
+  useImperativeHandle(ref, () => ({
+    getData: async (): Promise<MessageData> => {
+        let content = await richText.current?.getContentHtml() || '';
+        content = content.replace(/<\/div>/g, '<br>').replace(/<div>/g, '');
+        if (content.endsWith('<br>')) {
+            content = content.slice(0, -4);
+        }
+        return {
+            recipients,
+            subject,
+            content,
+            attachments,
+        };
+    },
+    hasUnsavedChanges: async (): Promise<boolean> => {
+        const currentContent = await richText.current?.getContentHtml() || '';
+
+        // 1. So sánh Recipients (không phân biệt thứ tự)
+        const initialRecipients = initialData?.recipients || [];
+        const recipientsChanged = recipients.sort().join(',') !== initialRecipients.sort().join(',');
+
+        // 2. So sánh Subject
+        const initialSubject = initialData?.subject || '';
+        const subjectChanged = subject !== initialSubject;
+
+        // 3. So sánh Content
+        const initialContent = initialData?.content || '';
+        const contentChanged = currentContent !== initialContent;
+
+        // 4. So sánh Attachments (dựa trên ID, không phân biệt thứ tự)
+        const initialAttachments = initialData?.attachments || [];
+        const currentAttachmentIds = attachments.map(f => f.id).sort().join(',');
+        const initialAttachmentIds = initialAttachments.map(f => f.id).sort().join(',');
+        const attachmentsChanged = currentAttachmentIds !== initialAttachmentIds;
+        
+        return recipientsChanged || subjectChanged || contentChanged || attachmentsChanged;
+    },
+  }));
 
   useEffect(() => {
     if (initialData?.content && richText.current) {
@@ -169,15 +263,16 @@ export default function MessageComposer({
     }
   };
 
-  const addRecipient = (email: string) => {
-    if (recipients.length >= limits.recipients) {
+const addRecipient = (email: string) => {
+    if (recipients.length >= recipientLimit) {
       Toast.show({
         type: 'error',
         text1: t('errors.title_error'),
-        text2: t('editor_component.feedback_recipient_limit', { limit: limits.recipients })
+        text2: t('editor_component.feedback_recipient_limit', { limit: recipientLimit })
       });
       return;
     }
+
     const trimmedEmail = email.trim().toLowerCase();
     if (trimmedEmail && !recipients.includes(trimmedEmail) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setRecipients([...recipients, trimmedEmail]);
@@ -188,6 +283,17 @@ export default function MessageComposer({
     setRecipients(recipients.filter((_, i) => i !== index));
   };
 
+  const handleNavigateToSchedule = async () => {
+    if (!onNavigateToSchedule) return;
+
+    let content = await richText.current?.getContentHtml() || '';
+    content = content.replace(/<\/div>/g, '<br>').replace(/<div>/g, '');
+    if (content.endsWith('<br>')) {
+      content = content.slice(0, -4);
+    }
+    const data: MessageData = { recipients, subject, content, attachments };
+    onNavigateToSchedule(data);
+  };
 
   // --- Data Fetching for Modals ---
   const fetchContacts = useCallback(async () => {
@@ -330,10 +436,18 @@ export default function MessageComposer({
           <TouchableOpacity onPress={onCancel} disabled={isSending}>
             <Ionicons name="close" size={28} color={isSending ? themeColors.icon : themeColors.text} />
           </TouchableOpacity>
-          <Text style={s.headerTitle}>{t('iam_page.btn_compose')}</Text>
-          <TouchableOpacity style={[s.sendButton, isSending && s.sendButtonDisabled]} onPress={() => handleAction('send')} disabled={isSending}>
-            {isSending ? <ActivityIndicator color="#fff" /> : <Text style={s.sendButtonText}>{t('editor_component.btn_send')}</Text>}
-          </TouchableOpacity>
+          <Text style={s.headerTitle} numberOfLines={1}>{dynamicHeaderTitle}</Text>
+          {buttonSet === 'iam' ? (
+            <TouchableOpacity style={[s.sendButton, isSending && s.sendButtonDisabled]} onPress={() => handleAction('send')} disabled={isSending}>
+              {isSending ? <ActivityIndicator color="#fff" /> : <Text style={s.sendButtonText}>{t('editor_component.btn_send')}</Text>}
+            </TouchableOpacity>
+            ) : buttonSet === 'scm' || buttonSet === 'ucm' ? (
+            <TouchableOpacity onPress={handleNavigateToSchedule} disabled={isSending}>
+              <Ionicons name="arrow-forward-circle" size={32} color="#ffc107" />
+            </TouchableOpacity>  
+            ) : (
+              <View style={{ width: 60 }} />
+            )}
         </View>
 
         <TouchableOpacity style={s.inputContainer} activeOpacity={1} onPress={() => Keyboard.dismiss()}>
@@ -353,12 +467,12 @@ export default function MessageComposer({
               value={recipientInput}
               onChangeText={handleRecipientInputChange}
               onSubmitEditing={() => { addRecipient(recipientInput); setRecipientInput(''); }}
-              editable={!isSending && recipients.length < limits.recipients}
+              editable={!isSending && recipients.length < recipientLimit}
               autoCapitalize="none" keyboardType="email-address"
             />
           </ScrollView>
           <Text style={s.counterText}>
-            {t('editor_component.feedback_recipient_count', { count: recipients.length, limit: limits.recipients })}
+            {t('editor_component.feedback_recipient_count', { count: recipients.length, limit: recipientLimit })}
           </Text>
           <TouchableOpacity style={s.contactButton} onPress={fetchContacts} disabled={isSending || isLoading.contacts}>
             {isLoading.contacts ? <ActivityIndicator size="small" /> : <Ionicons name="person-add-outline" size={24} color={isSending ? themeColors.icon : themeColors.tint} />}
@@ -441,7 +555,9 @@ export default function MessageComposer({
       <Toast />
     </SafeAreaView>
   );
-}
+});
+
+MessageComposer.displayName = 'MessageComposer';
 
 // --- Sub-components for Modals ---
 const ContactPickerModal = ({ visible, onClose, contacts, isLoading, onSelect, t, themeColors }: ContactPickerModalProps) => {
@@ -664,3 +780,5 @@ const modalStyles = (themeColors: Theme) => StyleSheet.create({
     loader: { marginVertical: 20 },
     sectionHeader: { fontSize: 16, fontWeight: 'bold', color: themeColors.text, backgroundColor: themeColors.background, paddingVertical: 8, paddingHorizontal: 5, marginTop: 10 },
 });
+
+export default MessageComposer;
