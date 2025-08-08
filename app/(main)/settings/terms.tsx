@@ -1,9 +1,10 @@
 // app/(main)/settings/terms.tsx
 // Version: 1.0.0
 
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { SafeAreaView, StyleSheet, useWindowDimensions } from 'react-native';
+import { SafeAreaView, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Colors } from '../../../src/constants/Colors';
 import { useTheme } from '../../../src/store/ThemeContext';
@@ -11,13 +12,12 @@ import { useTheme } from '../../../src/store/ThemeContext';
 const TermsScreen = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { width } = useWindowDimensions();
   const themeColors = Colors[theme];
+  const tabBarHeight = useBottomTabBarHeight();
 
   // Get the HTML content from translation file
   const contentHtml = t('terms_page.content');
 
-  // Create a full HTML document with styles that match the app's theme
   const htmlDoc = `
     <!DOCTYPE html>
     <html>
@@ -29,7 +29,9 @@ const TermsScreen = () => {
           background-color: ${themeColors.background};
           color: ${themeColors.text};
           padding: 15px;
+          padding-bottom: ${tabBarHeight + 15}px;
           line-height: 1.6;
+          text-align: justify;
         }
         h2 {
           font-size: 1.5em;

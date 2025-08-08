@@ -1,17 +1,24 @@
 // app/(main)/_layout.tsx
-// Version: 1.1.0
+// Version: 1.2.0
 
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Colors } from '../../src/constants/Colors';
 import { useTheme } from '../../src/store/ThemeContext';
+import { useIamStore } from '../../src/store/iamStore';
 
 export default function MainTabLayout() {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const themeColors = Colors[theme];
+
+  const { unreadCount, fetchUnreadCount } = useIamStore();
+
+  useEffect(() => {
+    fetchUnreadCount();
+  }, [fetchUnreadCount]);
 
   return (
     <Tabs
@@ -55,6 +62,7 @@ export default function MainTabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} size={24} color={color} />
           ),
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
         }}
       />
       <Tabs.Screen

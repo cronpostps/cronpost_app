@@ -1,5 +1,5 @@
 // src/services/notificationService.ts
-// Version: 2.2.0 - Migrated to Firebase Modular SDK
+// Version: 2.2.0 - Update to match modern Firebase API
 
 import messaging from '@react-native-firebase/messaging';
 import { PermissionsAndroid, Platform } from 'react-native';
@@ -28,10 +28,11 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
     console.log('User did not grant permission for push notifications.');
     return;
   }
+  
   try {
-    // Cú pháp mới không thay đổi nhiều ở đây
     const token = await messaging().getToken();
     console.log('Obtained FCM Token:', token);
+
     if (token) {
       await api.post('/api/push/register', { token });
       console.log('Successfully registered FCM token with the server.');
@@ -44,9 +45,9 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
 
 export async function unregisterFromPushNotificationsAsync(): Promise<void> {
   try {
-    // Cú pháp mới không thay đổi nhiều ở đây
     await messaging().deleteToken();
     console.log('FCM token deleted from device.');
+    
     await api.delete('/api/push/unregister');
     console.log('Successfully unregistered push token from the server.');
   } catch (error) {

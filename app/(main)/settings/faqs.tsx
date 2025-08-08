@@ -1,6 +1,7 @@
 // app/(main)/settings/faqs.tsx
 // Version: 1.0.0
 
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView, StyleSheet } from 'react-native';
@@ -12,6 +13,7 @@ const FaqsScreen = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const themeColors = Colors[theme];
+  const tabBarHeight = useBottomTabBarHeight();
 
   // Dynamically build FAQ items from translation file
   let faqsHtml = '';
@@ -55,6 +57,7 @@ const FaqsScreen = () => {
           color: ${themeColors.text};
           margin: 0;
           padding: 15px;
+          padding-bottom: ${tabBarHeight + 15}px;
         }
         .faq-item {
           border-bottom: 1px solid ${themeColors.inputBorder};
@@ -64,7 +67,7 @@ const FaqsScreen = () => {
           background-color: transparent;
           border: none;
           padding: 20px 0;
-          text-align: left;
+          text-align: justify;
           font-size: 16px;
           font-weight: bold;
           color: ${themeColors.text};
@@ -84,6 +87,7 @@ const FaqsScreen = () => {
           transition: max-height 0.3s ease-out, padding 0.3s ease-out;
           padding: 0 10px;
           line-height: 1.6;
+          text-align: justify;
         }
         .faq-answer.active {
             padding: 0 10px 20px 10px;

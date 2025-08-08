@@ -1,6 +1,7 @@
 // app/(main)/settings/privacy.tsx
-// Version: 1.0.0
+// Version: 1.1.0
 
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView, StyleSheet } from 'react-native';
@@ -12,11 +13,10 @@ const PrivacyScreen = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const themeColors = Colors[theme];
+  const tabBarHeight = useBottomTabBarHeight();
 
-  // Get the HTML content from translation file
   const contentHtml = t('privacy_page.content');
 
-  // Create a full HTML document with styles that match the app's theme
   const htmlDoc = `
     <!DOCTYPE html>
     <html>
@@ -28,7 +28,9 @@ const PrivacyScreen = () => {
           background-color: ${themeColors.background};
           color: ${themeColors.text};
           padding: 15px;
+          padding-bottom: ${tabBarHeight + 15}px;
           line-height: 1.6;
+          text-align: justify;
         }
         h2 {
           font-size: 1.5em;

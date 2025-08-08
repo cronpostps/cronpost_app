@@ -1,5 +1,5 @@
 // src/store/AuthContext.tsx
-// Version: 1.9.4
+// Version: 1.9.6
 
 import * as Google from 'expo-auth-session/providers/google';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -16,6 +16,25 @@ import { registerForPushNotificationsAsync } from '../services/notificationServi
 import { translateApiError } from '../utils/errorTranslator';
 import { useTheme } from './ThemeContext';
 
+interface User {
+  id: string;
+  email: string;
+  user_name: string | null;
+  notifications_enabled: boolean;
+  timezone: string | null;
+  date_format: string;
+}
+
+interface TimezoneInfo {
+  name: string;
+  offset: string | null;
+  error?: string | null;
+}
+
+interface TimezoneApiResponse {
+  results: TimezoneInfo[];
+}
+
 const TOKEN_KEY = 'accessToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
 
@@ -25,21 +44,27 @@ export const useAuth = () => {
   return useContext(AuthContext);
 };
 
-const checkAndUpdateTimezone = async (user, setUser) => {
-  if (!user || !user.timezone) return;
+const checkAndUpdateTimezone = async (
+  user: User | null, 
+  setUser: React.Dispatch<React.SetStateAction<User | null>>, 
+  hasShown: boolean, 
+  setHasShown: React.Dispatch<React.SetStateAction<boolean>>
+) => {
+  if (!user || !user.timezone || hasShown) return;
 
   try {
     const deviceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (deviceTimezone === user.timezone) {
       return;
     }
-    const response = await api.post('/api/users/timezones/get-offsets', {
+    const response = await api.post<TimezoneApiResponse>('/api/users/timezones/get-offsets', {
       timezones: [deviceTimezone, user.timezone]
     });
     const results = response.data.results;
-    const deviceTzInfo = results.find(r => r.name === deviceTimezone);
-    const dbTzInfo = results.find(r => r.name === user.timezone);
+    const deviceTzInfo = results.find((r: TimezoneInfo) => r.name === deviceTimezone);
+    const dbTzInfo = results.find((r: TimezoneInfo) => r.name === user.timezone);
     if (!deviceTzInfo?.offset || !dbTzInfo?.offset || deviceTzInfo.offset !== dbTzInfo.offset) {
+      setHasShown(true);
       Alert.alert(
         i18n.t('timezone_modal.title'),
         i18n.t('timezone_modal.body', { newTimezone: deviceTimezone }),
@@ -81,13 +106,14 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
       refreshToken: null,
       isAuthenticated: null,
     });
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isGoogleAuthLoading, setIsGoogleAuthLoading] = useState(false);
     
     const [isAppLocked, setIsAppLocked] = useState(true);
     const [pinModalVisible, setPinModalVisible] = useState(false);
     const [isVerifyingPin, setIsVerifyingPin] = useState(false);
+    const [hasShownTimezoneAlert, setHasShownTimezoneAlert] = useState(false);
     
     const router = useRouter();
     const segments = useSegments();
@@ -184,19 +210,21 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
     }, []);
     
     useEffect(() => {
-      if (user && !isLoading) { 
-        checkAndUpdateTimezone(user, setUser);
-        console.log('User authenticated. Registering for push notifications...');
+      if (user && !isLoading && user.notifications_enabled) { 
+        checkAndUpdateTimezone(user, setUser, hasShownTimezoneAlert, setHasShownTimezoneAlert);
+        console.log('User has notifications enabled. Registering for push notifications...');
         registerForPushNotificationsAsync();        
+      } else if (user && !isLoading) {
+        checkAndUpdateTimezone(user, setUser, hasShownTimezoneAlert, setHasShownTimezoneAlert);
       }
-    }, [user, isLoading]);
+    }, [user, isLoading, hasShownTimezoneAlert]);
   
     useEffect(() => {
       if (isLoading) return;
       const inAuthGroup = segments[0] === '(main)';
       if (authState.isAuthenticated && !inAuthGroup) { router.replace('/(main)/dashboard'); } 
       else if (!authState.isAuthenticated && inAuthGroup) { router.replace('/'); }
-    }, [authState.isAuthenticated, isLoading, segments]);
+    }, [authState.isAuthenticated, isLoading, segments, router]);
   
     const handleSuccessfulLogin = async (accessToken: string, refreshToken: string) => {
         await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
@@ -206,7 +234,7 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
         setAuthState({ accessToken: accessToken, refreshToken: refreshToken, isAuthenticated: true });
     }
   
-    const signIn = async (email, password) => {
+    const signIn = async (email: string, password: string) => {
       try {
         const response = await api.post('/api/auth/signin', { email, password });
         const { access_token, refresh_token } = response.data;

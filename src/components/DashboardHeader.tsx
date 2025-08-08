@@ -1,5 +1,5 @@
 // src/components/DashboardHeader.tsx
-// Version: 3.0.0 (Kiến trúc Backend-driven clock)
+// Version: 3.0.1 (Kiến trúc độc lập, tự quản lý)
 
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,7 +18,7 @@ const formatDate = (date: Date, formatPreference: string) => {
     switch (formatPreference) {
         case 'mm/dd/yyyy': return `${month}/${day}/${year}`;
         case 'yyyy/mm/dd': return `${year}/${month}/${day}`;
-        default: return `${day}/${month}/${year}`;
+        default: return `${day}/${month}/${year}`; // dd/mm/yyyy
     }
 };
 
@@ -29,22 +29,24 @@ const formatGmtString = (offsetSeconds: number) => {
     return `[GMT${sign}${String(offsetHours).padStart(2, '0')}:${String(offsetMinutes).padStart(2, '0')}]`;
 };
 
+// Component không cần nhận props nữa
 export const DashboardHeader = () => {
     const { t } = useTranslation();
     const { theme } = useTheme();
-    const { user } = useAuth();
+    const { user } = useAuth(); // Lấy thông tin user từ context
     const themeColors = Colors[theme];
 
     const [displayTime, setDisplayTime] = useState('');
     const [isLoading, setIsLoading] = useState(true);
 
+    // Lấy thông tin trực tiếp từ user object trong context
     const userName = user?.user_name || user?.email || '';
     const status = user?.account_status || '...';
     const timezone = user?.timezone;
     const dateFormat = user?.date_format || 'dd/mm/yyyy';
 
     useEffect(() => {
-        let clockInterval: NodeJS.Timeout;
+        let clockInterval: any;
         setIsLoading(true);
 
         if (!timezone) {
@@ -58,19 +60,12 @@ export const DashboardHeader = () => {
                 const response = await api.get(`/api/users/time/now?tz=${timezone}`);
                 const { utc_timestamp, offset_seconds } = response.data;
                 
-                // Thời gian server lúc gọi API, tính bằng mili-giây
                 const serverTimeAtFetch = utc_timestamp * 1000;
-                // Thời gian của client lúc gọi API
                 const clientTimeAtFetch = Date.now();
 
-                // Bắt đầu chạy đồng hồ
                 clockInterval = setInterval(() => {
-                    // Thời gian trôi qua kể từ lúc gọi API
                     const elapsed = Date.now() - clientTimeAtFetch;
-                    // Thời gian hiện tại trên server (ước tính)
                     const now = new Date(serverTimeAtFetch + elapsed);
-
-                    // Áp dụng offset để có thời gian tại múi giờ của user
                     const userTime = new Date(now.getTime() + offset_seconds * 1000);
                     
                     const dateString = formatDate(userTime, dateFormat);
