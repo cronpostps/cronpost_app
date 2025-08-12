@@ -1,5 +1,5 @@
 // app/(main)/scm/index.tsx
-// Version: 3.1.0 (Integrated Custom Modal, Filters & Enhanced Display)
+// Version: 3.3.0
 
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -29,10 +29,16 @@ import { useTheme } from '../../../src/store/ThemeContext';
 import { translateApiError } from '../../../src/utils/errorTranslator';
 dayjs.extend(relativeTime);
 
+interface Attachment {
+  id: string;
+  original_filename: string;
+  filesize_bytes: number;
+}
+
 // --- Interfaces & Types ---
 type SendingMethod = 'in_app_messaging' | 'cronpost_email' | 'user_email';
 type ScmStatus = 'active' | 'inactive' | 'paused' | 'completed' | 'canceled' | 'failed';
-type LoopType = 'minutes' | 'days' | 'day_of_week' | 'date_of_month' | 'date_of_year';
+type LoopType = 'minutes' | 'days' | 'day_of_week' | 'date_of_month' | 'date_of_year' | 'date_of_lunar_year';
 type DayOfWeek = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 
 interface Scm {
@@ -49,10 +55,14 @@ interface Scm {
   loop_day_of_week?: DayOfWeek;
   loop_date_of_month?: number;
   loop_date_of_year?: string; // "MM-DD"
+  loop_is_leap_month?: boolean;
   loop_sending_time?: string; // "HH:mm"
   unloop_send_at?: string;
   repeat_number: number;
   current_repetition: number;
+  attachments: Attachment[];
+  content: string;
+  updated_at: string;
 }
 
 interface ScmStats {
@@ -92,6 +102,12 @@ const formatScheduleText = (item: Scm, t: TFunction): string => {
         return `${t('scm_page.schedule_loop_date_of_year', { day: date, month: monthName, time })} ${reps}`;
       default:
         return t('scm_page.schedule_not_scheduled');
+      case 'date_of_lunar_year': {
+        const [lunar_month, lunar_day] = item.loop_date_of_year?.split('-') || ['', ''];
+        const leapIndicator = item.loop_is_leap_month ? ` ${t('scm_page.leap_month_indicator')}` : '';
+        const dateString = `${lunar_day.padStart(2, '0')}/${lunar_month.padStart(2, '0')}${leapIndicator}`;
+        return `${t('scm_page.schedule_loop_date_of_lunar_year', { date: dateString, time })} ${reps}`;
+      }        
     }
   }
   return t('scm_page.schedule_not_scheduled');
@@ -99,26 +115,59 @@ const formatScheduleText = (item: Scm, t: TFunction): string => {
 
 const CountdownTimer = ({ nextSendAt, style }: { nextSendAt: string; style: any }) => {
   const { t } = useTranslation();
-  const [timeLeft, setTimeLeft] = useState(dayjs(nextSendAt).fromNow(true));
+  // Quản lý 2 trạng thái thời gian: tương đối và chính xác
+  const [relativeTime, setRelativeTime] = useState('');
+  const [preciseTime, setPreciseTime] = useState('');
+
   useEffect(() => {
+    // Hàm tính toán thời gian chính xác, tương tự web
+    const formatPreciseTime = (distance: number) => {
+      const d = Math.floor(distance / (1000 * 60 * 60 * 24));
+      const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((distance % (1000 * 60)) / 1000);
+      
+      const parts = [];
+      if (d > 0) parts.push(`${d}d`);
+      parts.push(String(h).padStart(2, '0'));
+      parts.push(String(m).padStart(2, '0'));
+      parts.push(String(s).padStart(2, '0'));
+
+      // Ghép h:m:s và thêm ngày (nếu có)
+      const timePart = parts.slice(d > 0 ? 1 : 0).join(':');
+      return d > 0 ? `${parts[0]} ${timePart}` : timePart;
+    };
+
     const interval = setInterval(() => {
-      const remaining = dayjs(nextSendAt).fromNow(true);
-      if (dayjs(nextSendAt).isBefore(dayjs())) {
-        setTimeLeft('Processing...');
+      const distance = dayjs(nextSendAt).diff(dayjs());
+
+      if (distance < 0) {
+        setRelativeTime('Processing...');
+        setPreciseTime('');
         clearInterval(interval);
       } else {
-        setTimeLeft(remaining);
+        // Cập nhật cả 2 trạng thái trong mỗi lần lặp
+        setRelativeTime(dayjs(nextSendAt).fromNow(true));
+        setPreciseTime(formatPreciseTime(distance));
       }
     }, 1000);
+
     return () => clearInterval(interval);
   }, [nextSendAt]);
-  return <Text style={style}>{t('scm_page.label_next')}: {timeLeft}</Text>;
+
+  // Render cả 2 thông tin thời gian
+  return (
+      <Text style={style}>
+          {t('scm_page.label_next')}: {relativeTime}
+          {preciseTime ? ` (${preciseTime})` : ''}
+      </Text>
+  );
 };
 
 // --- Main Screen Component ---
 export default function ScmScreen() {
   const { t } = useTranslation();
-  const { refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { theme } = useTheme();
   const router = useRouter();
   const styles = createStyles(Colors[theme], theme);
@@ -132,7 +181,11 @@ export default function ScmScreen() {
   const [activeFilter, setActiveFilter] = useState<ScmStatus | 'all'>('all');
   const [isMethodModalVisible, setIsMethodModalVisible] = useState(false);
   const [availableMethods, setAvailableMethods] = useState<MethodOption[]>([]);
-
+  const userDateFormat = useMemo(() => {
+      const format = user?.date_format || 'dd/mm/yyyy';
+      // Chuyển đổi format của user (dd/mm/yyyy) sang format của dayjs (DD/MM/YYYY)
+      return `${format.toUpperCase()} HH:mm`;
+  }, [user?.date_format]);
   const refreshUserRef = React.useRef(refreshUser);
   useEffect(() => { refreshUserRef.current = refreshUser; }, [refreshUser]);
 
@@ -173,8 +226,25 @@ export default function ScmScreen() {
 
   // --- Filtering Logic ---
   const filteredScms = useMemo(() => {
-    if (activeFilter === 'all') return scms;
-    return scms.filter(scm => scm.status === activeFilter);
+    // 1. Lọc danh sách theo trạng thái được chọn
+    const filtered = activeFilter === 'all'
+      ? scms
+      : scms.filter(scm => scm.status === activeFilter);
+  
+    // 2. Nếu bộ lọc là 'active', sắp xếp kết quả đã lọc
+    if (activeFilter === 'active') {
+      return filtered.sort((a, b) => {
+        // Đẩy các SCM không có `next_send_at` xuống cuối
+        if (!a.next_send_at) return 1;
+        if (!b.next_send_at) return -1;
+        
+        // So sánh thời gian để đưa SCM sắp gửi lên đầu
+        return new Date(a.next_send_at).getTime() - new Date(b.next_send_at).getTime();
+      });
+    }
+  
+    // 3. Với các bộ lọc khác, chỉ trả về danh sách đã lọc
+    return filtered;
   }, [scms, activeFilter]);
   
   const filterOptions: { key: ScmStatus | 'all'; label: string }[] = [
@@ -182,6 +252,7 @@ export default function ScmScreen() {
       { key: 'active', label: t('scm_page.status_active') },
       { key: 'inactive', label: t('scm_page.status_inactive') },
       { key: 'paused', label: t('scm_page.status_paused') },
+      { key: 'canceled', label: t('scm_page.status_canceled') },
       { key: 'completed', label: t('scm_page.status_completed') },
   ];
 
@@ -193,9 +264,9 @@ export default function ScmScreen() {
     try {
       if (action === 'delete') {
         Alert.alert(t('scm_page.confirm_delete'), '', [
-          { text: t('btn_cancel'), style: 'cancel', onPress: () => setIsActionLoading(null) },
+          { text: t('scm_page.btn_cancel'), style: 'cancel', onPress: () => setIsActionLoading(null) },
           {
-            text: t('action_delete'), style: 'destructive',
+            text: t('scm_page.action_delete'), style: 'destructive',
             onPress: async () => {
               await api.delete(`/api/scm/${scmId}`);
               Toast.show({ type: 'success', text2: t('scm_page.success_deleted') });
@@ -219,6 +290,20 @@ export default function ScmScreen() {
     router.push({
         pathname: '/(main)/scm/compose',
         params: { scmId: scmId }
+    });
+  };
+
+  const handleReschedule = (item: Scm) => {
+    router.push({
+      pathname: '/(main)/scm/schedule',
+      params: {
+        scmId: item.id,
+        recipients: JSON.stringify(item.receiver_addresses.map(r => r.email)),
+        subject: item.title,
+        content: item.content,
+        attachments: JSON.stringify(item.attachments),
+        sendingMethod: item.sending_method,
+      },
     });
   };
 
@@ -249,8 +334,19 @@ export default function ScmScreen() {
     setIsMethodModalVisible(true);
   };
 
-// --- UI Rendering Helpers ---
-
+  // --- UI Rendering Helpers ---
+  const getMethodBadgeStyle = (method: SendingMethod) => {
+    switch (method) {
+      case 'in_app_messaging':
+        return { container: styles.methodBadgePrimary, text: styles.methodBadgeTextLight };
+      case 'cronpost_email':
+        return { container: styles.methodBadgeInfo, text: styles.methodBadgeTextDark };
+      case 'user_email':
+        return { container: styles.methodBadgeWarning, text: styles.methodBadgeTextDark };
+      default:
+        return { container: {}, text: {} };
+    }
+  };
   // Helper to get status badge style
   const getStatusStyle = (status: ScmStatus) => {
     switch (status) {
@@ -267,20 +363,36 @@ export default function ScmScreen() {
   const renderActionButtons = (item: Scm) => (
     <View style={styles.actionsContainer}>
       {item.status === 'active' && <>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleAction(item.id, 'pause')}><Text style={styles.actionText}>{t('scm_page.action_pause')}</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleAction(item.id, 'cancel')}><Text style={styles.actionText}>{t('scm_page.action_cancel')}</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.actionButton, styles.actionButtonWarning]} onPress={() => handleAction(item.id, 'pause')}>
+          <Text style={styles.actionButtonText}>{t('scm_page.action_pause')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.actionButton, styles.actionButtonDanger]} onPress={() => handleAction(item.id, 'cancel')}>
+          <Text style={styles.actionButtonText}>{t('scm_page.action_cancel')}</Text>
+        </TouchableOpacity>
       </>}
       {item.status === 'paused' && <>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleAction(item.id, 'resume')}><Text style={styles.actionText}>{t('scm_page.action_resume')}</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleAction(item.id, 'cancel')}><Text style={styles.actionText}>{t('scm_page.action_cancel')}</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.actionButton, styles.actionButtonSuccess]} onPress={() => handleAction(item.id, 'resume')}>
+          <Text style={styles.actionButtonText}>{t('scm_page.action_resume')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.actionButton, styles.actionButtonDanger]} onPress={() => handleAction(item.id, 'cancel')}>
+          <Text style={styles.actionButtonText}>{t('scm_page.action_cancel')}</Text>
+        </TouchableOpacity>
       </>}
       {item.status === 'inactive' && <>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleEdit(item.id)}><Text style={styles.actionText}>{t('scm_page.action_edit')}</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleAction(item.id, 'delete')}><Text style={styles.actionText}>{t('scm_page.action_delete')}</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.actionButton, styles.actionButtonPrimary]} onPress={() => handleEdit(item.id)}>
+          <Text style={styles.actionButtonText}>{t('scm_page.action_edit')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.actionButton, styles.actionButtonDanger]} onPress={() => handleAction(item.id, 'delete')}>
+          <Text style={styles.actionButtonText}>{t('scm_page.action_delete')}</Text>
+        </TouchableOpacity>
       </>}
       {(item.status === 'completed' || item.status === 'canceled' || item.status === 'failed') && <>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleEdit(item.id)}><Text style={styles.actionText}>{t('scm_page.action_reschedule')}</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleAction(item.id, 'delete')}><Text style={styles.actionText}>{t('scm_page.action_delete')}</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.actionButton, styles.actionButtonPrimary]} onPress={() => handleReschedule(item)}>
+          <Text style={styles.actionButtonText}>{t('scm_page.action_reschedule')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.actionButton, styles.actionButtonDanger]} onPress={() => handleAction(item.id, 'delete')}>
+          <Text style={styles.actionButtonText}>{t('scm_page.action_delete')}</Text>
+        </TouchableOpacity>
       </>}
     </View>
   );
@@ -305,19 +417,42 @@ export default function ScmScreen() {
     return (
       <View style={styles.itemContainer}>
         {isActionLoading === item.id && <View style={styles.itemLoadingOverlay}><ActivityIndicator color={Colors[theme].tint} /></View>}
+        
+        {/* --- HEADER ĐÃ ĐƯỢC CẤU TRÚC LẠI --- */}
         <View style={styles.itemHeader}>
-          <View style={statusStyle.container}>
-            <Text style={statusStyle.text}>{t(`scm_page.status_${item.status}`)}</Text>
+          {/* 1. Tiêu đề được chuyển lên đây */}
+          <Text style={styles.titleText} numberOfLines={2}>{item.title || t('scm_page.label_no_title')}</Text>
+          
+          {/* 2. Nhóm các badge được đặt trong một View mới */}
+          <View style={styles.badgeGroupContainer}>
+            <View style={[styles.methodBadge, getMethodBadgeStyle(item.sending_method).container]}>
+              <Text style={getMethodBadgeStyle(item.sending_method).text}>
+                {getMethodShortText(item.sending_method)}
+              </Text>
+            </View>
+            <View style={[statusStyle.container, { marginTop: 5 }]}>
+              <Text style={statusStyle.text}>{t(`scm_page.status_${item.status}`)}</Text>
+            </View>
           </View>
-          <Text style={styles.methodText}>{getMethodShortText(item.sending_method)}</Text>
         </View>
-        <View style={styles.itemBody}><Text style={styles.titleText} numberOfLines={1}>{item.title || t('scm_page.label_no_title')}</Text><Text style={styles.recipientText} numberOfLines={1}>{t('scm_page.label_to')}: {recipientsText}</Text></View>
+
+        {/* --- BODY CHỈ CÒN LẠI NGƯỜI NHẬN --- */}
+        <View style={styles.itemBody}>
+          <Text style={styles.recipientText} numberOfLines={1}>{t('scm_page.label_to')}: {recipientsText}</Text>
+        </View>
+
+        {/* --- CÁC PHẦN CÒN LẠI GIỮ NGUYÊN --- */}
         <View style={styles.scheduleContainer}>
             <Ionicons name="time-outline" size={16} color={styles.scheduleText.color} />
             <Text style={styles.scheduleText}>{formatScheduleText(item, t)}</Text>
         </View>
         {item.status === 'active' && item.next_send_at && <CountdownTimer nextSendAt={item.next_send_at} style={styles.countdownText} />}
-        {renderActionButtons(item)}
+        <View style={styles.footerContainer}>
+          <Text style={styles.createdText}>
+            ↻ {dayjs(item.updated_at).format(userDateFormat)}
+          </Text>
+          {renderActionButtons(item)}
+        </View>
       </View>
     );
   };
@@ -343,7 +478,7 @@ export default function ScmScreen() {
             data={filteredScms}
             renderItem={renderScmItem}
             keyExtractor={item => item.id}
-            contentContainerStyle={{ paddingBottom: 180 }}
+            contentContainerStyle={{ paddingBottom: 150 }}
             ListEmptyComponent={<View style={styles.centered}><Ionicons name="mail-unread-outline" size={60} color={Colors[theme].icon} /><Text style={styles.emptyText}>{t('scm_page.empty_list')}</Text></View>}
             refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={Colors[theme].tint}/>}
         />
@@ -415,26 +550,111 @@ const createStyles = (themeColors: any, theme: 'light' | 'dark') => StyleSheet.c
     borderRadius: 12,
     zIndex: 10,
   },
-  itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  itemHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', // Quan trọng: để căn giữa tiêu đề và nhóm badge
+    marginBottom: 8, // Giảm khoảng cách dưới header
+  },
   statusContainer: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   statusTextLight: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 12 },
   statusTextDark: { color: '#000000', fontWeight: 'bold', fontSize: 12 },
   statusActive: { backgroundColor: '#28a745' },
   statusPaused: { backgroundColor: '#ffc107' },
   statusCompleted: { backgroundColor: '#17a2b8' },
-  statusCanceled: { backgroundColor: '#6c757d' },
-  statusFailed: { backgroundColor: '#dc3545' },
-  statusInactive: { backgroundColor: '#343a40' },
+  statusCanceled: { backgroundColor: '#dc3545' },
+  statusFailed: { backgroundColor: '#5c1049ff' },
+  statusInactive: { backgroundColor: '#6c757d' },
+  methodBadge: {
+    paddingHorizontal: 0, // Đồng bộ với status badge
+    paddingVertical: 0,    // Đồng bộ với status badge
+    borderRadius: 0,      // Đồng bộ với status badge
+    alignItems: 'center',
+  },
+  methodBadgeTextLight: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  methodBadgeTextDark: {
+    color: '#000000',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  methodBadgePrimary: { // Dành cho In-App
+    backgroundColor: '#0d6efd',
+  },
+  methodBadgeInfo: { // Dành cho CP-Email
+    backgroundColor: '#0dcaf0',
+  },
+  methodBadgeWarning: { // Dành cho SMTP
+    backgroundColor: '#ffc107',
+  },
   methodText: { fontSize: 12, color: themeColors.icon, fontWeight: '500' },
-  itemBody: { marginBottom: 12 },
-  titleText: { fontSize: 18, fontWeight: 'bold', color: themeColors.text, marginBottom: 4 },
-  recipientText: { fontSize: 14, color: themeColors.icon },
+  itemBody: { 
+    // Không cần marginBottom nữa vì recipientText đã có
+  },
+  titleText: { 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    color: themeColors.text, 
+    flex: 1, // Quan trọng: để tiêu đề chiếm hết không gian
+    marginRight: 10, // Tạo khoảng cách với nhóm badge
+  },
+  recipientText: { 
+    fontSize: 14, 
+    color: themeColors.icon,
+    marginBottom: 12, // Tạo khoảng cách với phần schedule bên dưới
+  },
+  badgeGroupContainer: {
+    alignItems: 'flex-end', // Căn các badge về phía phải
+  },
   scheduleContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
   scheduleText: { marginLeft: 6, fontSize: 13, color: themeColors.icon, flexShrink: 1 },
   countdownText: { fontSize: 13, color: themeColors.tint, fontWeight: 'bold', fontStyle: 'italic' },
-  actionsContainer: { flexDirection: 'row', justifyContent: 'flex-end', borderTopWidth: 1, borderTopColor: themeColors.inputBorder, paddingTop: 10, marginTop: 10 },
-  actionButton: { marginLeft: 15, paddingVertical: 5 },
-  actionText: { color: themeColors.tint, fontWeight: 'bold', fontSize: 14 },
+
+  footerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  createdText: {
+    fontSize: 12,
+    color: themeColors.icon,
+    fontStyle: 'italic',
+  },
+  actionsContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center',
+    gap: 10,
+  },
+  
+  actionButton: {
+    borderRadius: 20, // Bo tròn để tạo hình viên thuốc
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionButtonPrimary: {
+    backgroundColor: '#0d6efd', // Màu xanh dương cho Edit/Reschedule
+  },
+  actionButtonSuccess: {
+    backgroundColor: '#198754', // Màu xanh lá cho Resume
+  },
+  actionButtonWarning: {
+    backgroundColor: '#ffc107', // Màu vàng cho Pause
+  },
+  actionButtonDanger: {
+    backgroundColor: '#dc3545', // Màu đỏ cho Cancel/Delete
+  },
+  actionButtonText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+
   fab: {
     position: 'absolute',
     bottom: 80,

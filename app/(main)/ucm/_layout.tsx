@@ -1,4 +1,4 @@
-// app/(main)/scm/_layout.tsx
+// app/(main)/ucm/_layout.tsx
 // Version: 1.0.1
 
 import { Stack } from 'expo-router';
@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { Colors } from '../../../src/constants/Colors';
 import { useTheme } from '../../../src/store/ThemeContext';
 
-export default function ScmStackLayout() {
+export default function UcmStackLayout() {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const themeColors = Colors[theme];
@@ -27,16 +27,13 @@ export default function ScmStackLayout() {
       <Stack.Screen
         name="index"
         options={{
-          // Ẩn header của Stack vì đã có header từ Tab Navigator
           headerShown: false,
         }}
       />
       <Stack.Screen
         name="compose"
         options={{
-          // Sẽ lấy tiêu đề từ key dịch thuật
-          title: t('scm_page.header'), 
-          // Hiển thị màn hình này dưới dạng modal để có trải nghiệm tốt hơn
+          title: t('ucm_page.header'), 
           presentation: 'modal', 
           headerTitleAlign: 'center',
           headerShown: false,
@@ -45,9 +42,9 @@ export default function ScmStackLayout() {
       <Stack.Screen
         name="schedule"
         options={{
-          title: t('scm_page.header'), // Sẽ bị ghi đè bởi header tùy chỉnh
+          title: t('ucm_page.header'),
           presentation: 'modal',
-          headerShown: false, // Ẩn header mặc định để dùng header tùy chỉnh
+          headerShown: false,
         }}
       />
     </Stack>

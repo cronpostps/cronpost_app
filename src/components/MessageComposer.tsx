@@ -1,9 +1,9 @@
 // src/components/MessageComposer.tsx
-// Version: 1.4.0
+// Version: 1.4.1
 
 import { Ionicons } from '@expo/vector-icons';
 import { TFunction } from 'i18next';
-import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -77,6 +77,7 @@ export interface MessageComposerProps {
   initialData?: Partial<MessageData>;
   sendingMethod: 'in_app_messaging' | 'cronpost_email' | 'user_email';
   buttonSet: 'iam' | 'scm' | 'ucm';
+  messageType?: 'IM' | 'FM';
   onAction: (action: ActionType, data: MessageData) => Promise<void>;
   onCancel: () => void;
   onNavigateToSchedule?: (data: MessageData) => void;
@@ -114,6 +115,7 @@ const MessageComposer = forwardRef<MessageComposerRef, MessageComposerProps>((pr
       initialData,
       sendingMethod,
       buttonSet,
+      messageType,
       onAction,
       onCancel,
       onNavigateToSchedule,
@@ -124,12 +126,14 @@ const MessageComposer = forwardRef<MessageComposerRef, MessageComposerProps>((pr
   const { user } = useAuth();
 
   const dynamicHeaderTitle = React.useMemo(() => {
-    const baseTitle = t('iam_page.btn_compose'); // "Compose"
+    const baseTitle = "✏️"; // "Compose"
     const details = [];
 
     // Thêm tiền tố (SCM, UCM) nếu có
     if (buttonSet === 'scm') details.push('SCM');
-    if (buttonSet === 'ucm') details.push('UCM');
+    if (buttonSet === 'ucm') {
+        details.push(messageType ? `${messageType}` : 'UCM');
+    }
 
     // Thêm phương thức gửi
     switch (sendingMethod) {
@@ -151,7 +155,7 @@ const MessageComposer = forwardRef<MessageComposerRef, MessageComposerProps>((pr
 
     // Kết hợp lại thành chuỗi cuối cùng
     return `${baseTitle} (${details.join(' : ')})`;
-  }, [buttonSet, sendingMethod, user, t]);
+  }, [buttonSet, sendingMethod, user, t, messageType]);
 
   const richText = useRef<RichEditor>(null);
   
@@ -223,11 +227,11 @@ const MessageComposer = forwardRef<MessageComposerRef, MessageComposerProps>((pr
     },
   }));
 
-  useEffect(() => {
-    if (initialData?.content && richText.current) {
-        richText.current.setContentHTML(initialData.content);
-    }
-  }, [initialData?.content]);
+  // useEffect(() => {
+  //   if (initialData?.content && richText.current) {
+  //       richText.current.setContentHTML(initialData.content);
+  //   }
+  // }, [initialData?.content]);
 
     // --- State & Logic for User Limits ---
   const [contentCharCount, setContentCharCount] = useState(0);
@@ -281,6 +285,13 @@ const addRecipient = (email: string) => {
 
   const removeRecipient = (index: number) => {
     setRecipients(recipients.filter((_, i) => i !== index));
+  };
+
+  const handleRecipientInputEnd = () => {
+    if (recipientInput) { // Chỉ xử lý nếu có nội dung trong ô input
+      addRecipient(recipientInput);
+      setRecipientInput('');
+    }
   };
 
   const handleNavigateToSchedule = async () => {
@@ -438,12 +449,12 @@ const addRecipient = (email: string) => {
           </TouchableOpacity>
           <Text style={s.headerTitle} numberOfLines={1}>{dynamicHeaderTitle}</Text>
           {buttonSet === 'iam' ? (
-            <TouchableOpacity style={[s.sendButton, isSending && s.sendButtonDisabled]} onPress={() => handleAction('send')} disabled={isSending}>
-              {isSending ? <ActivityIndicator color="#fff" /> : <Text style={s.sendButtonText}>{t('editor_component.btn_send')}</Text>}
+            <TouchableOpacity onPress={() => handleAction('send')} disabled={isSending}>
+              <Ionicons name="send" size={32} color="#f78f08ff" />
             </TouchableOpacity>
             ) : buttonSet === 'scm' || buttonSet === 'ucm' ? (
             <TouchableOpacity onPress={handleNavigateToSchedule} disabled={isSending}>
-              <Ionicons name="arrow-forward-circle" size={32} color="#ffc107" />
+              <Ionicons name="calendar" size={32} color="#f78f08ff" />
             </TouchableOpacity>  
             ) : (
               <View style={{ width: 60 }} />
@@ -466,7 +477,8 @@ const addRecipient = (email: string) => {
               placeholderTextColor={themeColors.icon}
               value={recipientInput}
               onChangeText={handleRecipientInputChange}
-              onSubmitEditing={() => { addRecipient(recipientInput); setRecipientInput(''); }}
+              onSubmitEditing={handleRecipientInputEnd} // SỬA LẠI DÒNG NÀY
+              onBlur={handleRecipientInputEnd} // THÊM DÒNG NÀY
               editable={!isSending && recipients.length < recipientLimit}
               autoCapitalize="none" keyboardType="email-address"
             />
@@ -512,6 +524,7 @@ const addRecipient = (email: string) => {
         <View style={{flex: 1, paddingHorizontal: 15, paddingTop: 10}}>
           <RichEditor
             ref={richText}
+            initialContentHTML={initialData?.content || ''}            
             placeholder={t('editor_component.label_message')}
             editorStyle={{ backgroundColor: themeColors.background, color: themeColors.text, placeholderColor: themeColors.icon }}
             disabled={isSending}
@@ -712,9 +725,6 @@ const styles = (themeColors: Theme) => StyleSheet.create({
     container: { flex: 1, backgroundColor: themeColors.background },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: themeColors.inputBorder, backgroundColor: themeColors.card },
     headerTitle: { fontSize: 18, fontWeight: 'bold', color: themeColors.text },
-    sendButton: { backgroundColor: themeColors.tint, paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20 },
-    sendButtonDisabled: { backgroundColor: themeColors.icon },
-    sendButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 },
     inputContainer: { paddingHorizontal: 15, borderBottomWidth: 1, borderBottomColor: themeColors.inputBorder, flexDirection: 'row', alignItems: 'center', minHeight: 50 },
     inputField: { flex: 1, color: themeColors.text, fontSize: 16, paddingVertical: 15 },
     contactButton: { padding: 5, marginLeft: 5 },

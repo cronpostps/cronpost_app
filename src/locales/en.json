@@ -178,7 +178,7 @@
     "label_to": "To",
     "label_title": "Title",
     "label_no_title": "(No Title)",
-    "label_next": "Next in",
+    "label_next": "Next Send",
     "method_in_app_short": "In-App",
     "method_cp_email_short": "CP-Email",
     "method_smtp_short": "SMTP",
@@ -204,7 +204,11 @@
     "schedule_loop_days": "Loop: Every {{count}} day(s) at {{time}}",
     "schedule_loop_day_of_week": "Loop: On {{day}} at {{time}}",
     "schedule_loop_date_of_month": "Loop: On the {{date}} of the month at {{time}}",
-    "schedule_loop_date_of_year": "Loop: On {{day}} {{month}} at {{time}}", 
+    "schedule_loop_date_of_year": "Loop: On {{day}} {{month}} at {{time}}",
+    "schedule_loop_date_of_lunar_year": "Loop: On {{date}} (Lunar) at {{time}}",
+    "leap_month_indicator": "(Leap)",
+    "schedule_success_title": "Schedule Set",
+    "schedule_success_body": "Your SCM has been scheduled successfully.",
     "schedule_form": {
       "header": "SCM Scheduling",
       "label_loop_type": "Loop Type",
@@ -213,11 +217,15 @@
       "option_day_of_week": "Day of Week",
       "option_date_of_month": "Date of Month",
       "option_date_of_year": "Date of Year",
+      "option_date_of_lunar_year": "Date of Lunar Year",
       "label_interval_minutes": "Interval (minutes)",
       "label_interval_days": "Interval (days)",
       "label_day": "Day",
       "label_date": "Date",
-      "label_sending_time": "Sending Time"
+      "label_sending_time": "Sending Time",
+      "label_lunar_month": "Lunar Month",
+      "label_lunar_day": "Lunar Day",
+      "label_lunar_leap_month": "Leap Month"
     }
   },
   "contacts_page": {
@@ -289,7 +297,6 @@
     "btn_cancel": "Cancel",
     "btn_saveDraft": "Save as Draft",
     "btn_schedule_scm": "Schedule SCM",
-    "btn_send": "Send",
     "btn_set_schedule": "Set Schedule",
     "contacts_picker_error": "Failed to load contacts",
     "contacts_picker_no_users": "No CronPost users found in your contacts.",
@@ -424,7 +431,7 @@
       "btn_delete": "DELETE",
       "label_method": "Method:",
       "btn_change_method": "Change Method",
-      "label_to": "To:",
+      "label_to": "To",
       "label_title": "Title:",
       "label_schedule": "Schedule:",
       "label_next_checkin": "Next Check-in:",
@@ -476,6 +483,7 @@
       "label_onetime": "One-time Schedule",
       "label_wct": "Waiting Time (WCT)",
       "wct_text": "WCT: {{value}} {{unit}}",
+      "wct_duration_text": "WCT lasts for: {{value}} {{unit}}",
       "note_wct": "Time window for you to check-in before messages are sent."
     },
     "schedule_form_fm": {
@@ -497,7 +505,8 @@
       "body": "Select the new sending method for your Initial Message."
     },
     "time_unit_hours": "hours",
-    "time_unit_mins": "mins",
+    "time_unit_mins": "minutes",
+    "time_unit_minutes": "minutes",
     "day_mon": "Monday",
     "day_tue": "Tuesday",
     "day_wed": "Wednesday",
@@ -810,6 +819,7 @@
     "ERR_UCM_REPEATING_NOT_SUPPORTED": "Error: Repeating is not supported for the 'days_after_im_sent' with value 0. Please set repeats to 1.",
     "ERR_UCM_IM_RETRIEVAL_FAILED": "Error: Failed to retrieve the Initial Message after the operation.",
     "ERR_UCM_FM_RETRIEVAL_FAILED": "Error: Could not retrieve the Follow-up Message after the operation.",
+    "ERR_UCM_DATE_OF_MONTH_OUT_OF_BOUNDS": "Error: 'Date of month' value must be between 1 and 31.",
     "ERR_USER_INVALID_TIMEZONE": "Error: Invalid timezone.",
     "ERR_AUTH_PREMIUM_REQUIRED_TRUST_VERIFIER": "Error: Setting a Trust Verifier Email is a Premium feature.",
     "ERR_AUTH_PIN_REQUIRED_FOR_ACTION": "Error: You must create a PIN before enabling 'Require PIN for all actions'.",
@@ -899,7 +909,8 @@
   "warnings": {
     "date_of_month_skip": "Note: For months that do not have this day, the system will skip it and wait for the next valid cycle.",
     "feb_29_skip": "Note: This schedule will be skipped in non-leap years.",
-    "loop_by_days_today": "Note: If the sending time has not yet passed today, the first message will be sent today."
+    "loop_by_days_today": "Note: If the sending time has not yet passed today, the first message will be sent today.",
+    "lunar_leap_month_skip": "Note: Schedules for this leap month will be skipped in years that do not have it."
   },
   "token_error_page": {
     "title": "Action Failed - CronPost",

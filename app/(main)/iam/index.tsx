@@ -405,11 +405,6 @@ const handleMarkSelectedAsRead = async () => {
       flex: 1,
       backgroundColor: themeColors.background,
     },
-    composeButton: {
-      position: 'absolute',
-      right: 15,
-      alignSelf: 'center',
-    },
     tabContainer: {
       flexDirection: 'row',
       justifyContent: 'center',
@@ -540,6 +535,18 @@ const handleMarkSelectedAsRead = async () => {
       color: themeColors.tint,
       marginTop: 4,
     },
+    fab: {
+      position: 'absolute',
+      bottom: 25,
+      right: 20,
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      backgroundColor: themeColors.tint,
+      justifyContent: 'center',
+      alignItems: 'center',
+      elevation: 8,
+    },
   });
 
   return (
@@ -565,15 +572,6 @@ const handleMarkSelectedAsRead = async () => {
               badgeCount={unreadCount}
             />
             <TabButton tabName="sent" title={t('iam_page.tab_sent')} />
-            <TouchableOpacity
-              style={styles.composeButton}
-              onPress={() => router.push('/(main)/iam/compose')}>
-              <Ionicons
-                name="create-outline"
-                size={28}
-                color={themeColors.tint}
-              />
-            </TouchableOpacity>
           </View>
           <View style={styles.searchContainer}>
             <TextInput
@@ -610,6 +608,7 @@ const handleMarkSelectedAsRead = async () => {
             data={filteredMessages}
             keyExtractor={(item) => item.id.toString()}
             renderItem={renderMessageItem}
+            contentContainerStyle={{ paddingBottom: 120 }}
             refreshControl={
               <RefreshControl
                 refreshing={isRefreshing}
@@ -633,6 +632,13 @@ const handleMarkSelectedAsRead = async () => {
           </TouchableOpacity>
         </View>
       )}
+
+      {!isSelectMode && (
+        <TouchableOpacity style={styles.fab} onPress={() => router.push('/(main)/iam/compose')}>
+            <Ionicons name="add" size={32} color="white" />
+        </TouchableOpacity>
+      )}
+
     </View>
   );
 }
