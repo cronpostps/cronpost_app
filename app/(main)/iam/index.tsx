@@ -2,8 +2,9 @@
 // Version: 1.3.2
 
 import { Ionicons } from '@expo/vector-icons';
+import dayjs from 'dayjs';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -56,7 +57,11 @@ export default function IamScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { unreadCount, fetchUnreadCount, readMessageIds, markAsRead } = useIamStore();
-
+  const userDayjsFormat = useMemo(() => {
+    if (user?.date_format === 'mm/dd/yyyy') return 'MM/DD/YYYY';
+    if (user?.date_format === 'yyyy/mm/dd') return 'YYYY/MM/DD';
+    return 'DD/MM/YYYY'; // Mặc định
+  }, [user?.date_format]);
   const [activeTab, setActiveTab] = useState<IamTab>('inbox');
   const [allMessages, setAllMessages] = useState<Message[]>([]); // <-- Mới: Lưu danh sách gốc
   const [filteredMessages, setFilteredMessages] = useState<Message[]>([]); // <-- Đổi tên từ messages
@@ -353,7 +358,7 @@ const handleMarkSelectedAsRead = async () => {
                 {otherParty || 'Unknown User'}
               </Text>
               <Text style={styles.messageDate}>
-                {new Date(item.sent_at).toLocaleDateString()}
+                {dayjs(item.sent_at).format(userDayjsFormat)}
               </Text>
             </View>
             <Text

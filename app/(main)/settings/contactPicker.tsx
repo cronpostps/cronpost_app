@@ -1,5 +1,5 @@
 // app/(main)/settings/contactPicker.tsx
-// Version: 1.0.1
+// Version: 1.2.0 (Fully Type-Safe)
 
 import { Ionicons } from '@expo/vector-icons';
 import * as Contacts from 'expo-contacts';
@@ -8,7 +8,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   SafeAreaView,
   StyleSheet,
@@ -17,10 +16,18 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import api from '../../../src/api/api';
 import { Colors } from '../../../src/constants/Colors';
 import { useTheme } from '../../../src/store/ThemeContext';
 import { translateApiError } from '../../../src/utils/errorTranslator';
+
+// FIX: Tinh chỉnh lại Type để chặt chẽ hơn
+// Định nghĩa một kiểu contact có id và email hợp lệ
+interface ValidDeviceContact extends Contacts.Contact {
+  id: string; // id là bắt buộc
+  emails: (Contacts.Email & { email: string })[]; // Mảng email không rỗng và email là string
+}
 
 const ContactPickerScreen = () => {
   const { t } = useTranslation();
@@ -28,8 +35,8 @@ const ContactPickerScreen = () => {
   const themeColors = Colors[theme];
   const router = useRouter();
 
-  const [deviceContacts, setDeviceContacts] = useState([]);
-  const [selectedContacts, setSelectedContacts] = useState(new Set());
+  const [deviceContacts, setDeviceContacts] = useState<ValidDeviceContact[]>([]);
+  const [selectedContacts, setSelectedContacts] = useState(new Set<string>());
   const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -38,11 +45,13 @@ const ContactPickerScreen = () => {
     (async () => {
       const { status } = await Contacts.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
-          t('contacts_page.permission_denied_title'),
-          t('contacts_page.permission_denied_body'),
-          [{ text: 'OK', onPress: () => router.back() }]
-        );
+        Toast.show({
+            type: 'error',
+            text1: t('contacts_page.permission_denied_title'),
+            text2: t('contacts_page.permission_denied_body'),
+            visibilityTime: 4000,
+            onHide: () => router.back()
+        });
         return;
       }
 
@@ -50,13 +59,20 @@ const ContactPickerScreen = () => {
         fields: [Contacts.Fields.Emails, Contacts.Fields.Name],
       });
 
-      const contactsWithEmail = data.filter(c => c.emails && c.emails.length > 0);
-      setDeviceContacts(contactsWithEmail);
+      // FIX: Dùng bộ lọc chặt chẽ hơn với Type Predicate 'is ValidDeviceContact'
+      // Thao tác này đảm bảo tất cả contact trong danh sách đều có id và email hợp lệ,
+      // giúp TypeScript hiểu và loại bỏ các lỗi ở những hàm khác.
+      const validContacts = data.filter(
+        (c): c is ValidDeviceContact =>
+          !!c.id && Array.isArray(c.emails) && c.emails.length > 0 && typeof c.emails[0].email === 'string'
+      );
+      
+      setDeviceContacts(validContacts);
       setIsLoading(false);
     })();
-  }, []);
-  
-  const handleToggleContact = (contactId) => {
+  }, [router, t]);
+
+  const handleToggleContact = (contactId: string) => {
     const newSelection = new Set(selectedContacts);
     if (newSelection.has(contactId)) {
       newSelection.delete(contactId);
@@ -73,18 +89,23 @@ const ContactPickerScreen = () => {
     const contactsToImport = deviceContacts
       .filter(c => selectedContacts.has(c.id))
       .map(c => ({
-        contact_email: c.emails[0].email,
+        contact_email: c.emails[0].email, // An toàn để truy cập vì đã lọc ở trên
         contact_name: c.name,
       }));
 
     try {
-      // --- LỖI ĐÃ ĐƯỢC SỬA TẠI ĐÂY ---
-      // Wrap the array in an object with the "contacts" key
       await api.post('/api/users/contacts/batch', { contacts: contactsToImport });
-      Alert.alert(t('contacts_page.import_success', { count: contactsToImport.length }));
-      router.back();
+      Toast.show({
+          type: 'success',
+          text1: t('contacts_page.import_success', { count: contactsToImport.length }),
+          onHide: () => router.back()
+      });
     } catch (error) {
-      Alert.alert(t('contacts_page.import_failed'), translateApiError(error));
+      Toast.show({
+          type: 'error',
+          text1: t('contacts_page.import_failed'),
+          text2: translateApiError(error)
+      });
     } finally {
       setIsImporting(false);
     }
@@ -98,7 +119,7 @@ const ContactPickerScreen = () => {
     );
   }, [searchQuery, deviceContacts]);
 
-  const renderItem = ({ item }) => {
+  const renderItem = ({ item }: { item: ValidDeviceContact }) => {
     const isSelected = selectedContacts.has(item.id);
     return (
       <TouchableOpacity style={styles.itemContainer} onPress={() => handleToggleContact(item.id)}>
@@ -113,16 +134,15 @@ const ContactPickerScreen = () => {
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: themeColors.background },
-    header: { padding: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: themeColors.inputBorder },
+    header: { padding: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: themeColors.inputBorder, backgroundColor: themeColors.card },
     searchInput: { height: 40, backgroundColor: themeColors.inputBackground, borderRadius: 8, paddingHorizontal: 10, fontSize: 16, color: themeColors.text },
-    listContainer: { flex: 1 },
     emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
     emptyText: { color: themeColors.icon, fontSize: 16, textAlign: 'center' },
-    itemContainer: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: themeColors.inputBorder, backgroundColor: themeColors.inputBackground },
+    itemContainer: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: themeColors.inputBorder, backgroundColor: themeColors.card },
     itemTextContainer: { flex: 1, marginLeft: 15 },
     itemLabel: { fontSize: 16, color: themeColors.text },
     itemDescription: { fontSize: 14, color: themeColors.icon, marginTop: 2 },
-    footer: { padding: 15, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: themeColors.inputBorder },
+    footer: { padding: 15, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: themeColors.inputBorder, backgroundColor: themeColors.card },
     importButton: { backgroundColor: themeColors.tint, padding: 15, borderRadius: 8, alignItems: 'center' },
     importButtonDisabled: { backgroundColor: themeColors.icon },
     importButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
@@ -140,6 +160,8 @@ const ContactPickerScreen = () => {
       <FlatList
         data={filteredContacts}
         renderItem={renderItem}
+        // FIX: Đảm bảo keyExtractor luôn trả về một chuỗi string.
+        // item.id ở đây đã được đảm bảo là string nhờ bộ lọc ở trên.
         keyExtractor={(item) => item.id}
         ListEmptyComponent={() => <View style={styles.emptyContainer}><Text style={styles.emptyText}>{t('contacts_page.no_contacts_found')}</Text></View>}
       />

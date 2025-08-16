@@ -1,19 +1,19 @@
 // app/(main)/settings/checkinOptions.tsx
-// Version 1.1.0 (Refactored with live updates)
+// Version 1.1.1
 
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
-  Alert,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
   TextInput,
-  View,
+  View
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import api from '../../../src/api/api';
 import { Colors } from '../../../src/constants/Colors';
 import { useAuth } from '../../../src/store/AuthContext';
@@ -57,11 +57,10 @@ export default function CheckinOptionsScreen() {
     fetchSettings();
   }, []);
 
-  // Hàm cập nhật cài đặt chung
   const handleSettingUpdate = async (update: Partial<typeof settings>) => {
     const originalSettings = { ...settings };
     const newSettings = { ...settings, ...update };
-    setSettings(newSettings); // Cập nhật UI trước
+    setSettings(newSettings);
 
     try {
       const payload = {
@@ -71,10 +70,19 @@ export default function CheckinOptionsScreen() {
         additional_reminder_minutes: parseInt(newSettings.reminderMinutes, 10) || 5,
       };
       await api.put('/api/users/checkin-settings', payload);
-      Alert.alert(t('security_page.biometrics_success_title'), t('checkin_options_page.success_saved'));
+
+      Toast.show({
+        type: 'success',
+        text1: t('checkin_options_page.success_saved'),
+      });
+
     } catch (error) {
-      Alert.alert(t('errors.generic', { message: '' }), translateApiError(error));
-      setSettings(originalSettings); // Hoàn tác lại nếu có lỗi
+      Toast.show({
+        type: 'error',
+        text1: t('errors.title_error'),
+        text2: translateApiError(error),
+      });
+      setSettings(originalSettings);
     }
   };
 

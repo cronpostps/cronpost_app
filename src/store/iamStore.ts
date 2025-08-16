@@ -9,10 +9,10 @@ interface IamState {
   unreadCount: number;
   isLoadingUnread: boolean;
   error: string | null;
-  readMessageIds: Set<string>; // <-- Mới: Set để lưu ID các tin đã đọc
+  readMessageIds: Set<string>;
   fetchUnreadCount: () => Promise<void>;
   setUnreadCount: (count: number) => void;
-  markAsRead: (messageId: string) => void; // <-- Mới: Action để đánh dấu đã đọc
+  markAsRead: (messageId: string) => void;
 }
 
 export const useIamStore = create<IamState>((set) => ({
@@ -29,6 +29,12 @@ export const useIamStore = create<IamState>((set) => ({
     })),
 
   fetchUnreadCount: async () => {
+    const token = api.defaults.headers.common['Authorization'];
+    if (!token) {
+      console.log('Skipping fetchUnreadCount because user is not authenticated yet.');
+      return;
+    }
+
     set({ isLoadingUnread: true, error: null });
     try {
       const response = await api.get('/api/messaging/unread-count');

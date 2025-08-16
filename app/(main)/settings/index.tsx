@@ -64,7 +64,7 @@ export default function SettingsScreen() {
       }
     };
     fetchUser();
-  }, []);
+  }, [user]);
 
   const handleSignOut = () => {
     Alert.alert(

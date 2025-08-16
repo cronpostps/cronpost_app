@@ -1,268 +1,336 @@
 // app/(main)/dashboard.tsx
-// Version: 1.2.3
+// Version: 2.0.5
 
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
   Platform,
+  RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
+
 import api from '../../src/api/api';
 import { DashboardHeader } from '../../src/components/DashboardHeader';
+import PinModal, { PinModalRef } from '../../src/components/PinModal';
 import { Colors } from '../../src/constants/Colors';
 import { useAuth } from '../../src/store/AuthContext';
 import { useTheme } from '../../src/store/ThemeContext';
 import { translateApiError } from '../../src/utils/errorTranslator';
 
-const DashboardScreen = () => {
-  const { t } = useTranslation();
-  const { user } = useAuth();
-  const { theme } = useTheme();
-  const router = useRouter();
-  const themeColors = Colors[theme];
-  const insets = useSafeAreaInsets();
-
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: themeColors.background,
-      paddingHorizontal: 20,
-      paddingTop: 20,
-      paddingBottom: insets.bottom + 80,
-    },
-    actionButton: {
-      width: 200,
-      height: 200,
-      borderRadius: 100,
-      justifyContent: 'center',
-      alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 5,
-      elevation: 8,
-    },
-    actionButtonText: {
-      color: '#ffffff',
-      fontSize: 24,
-      fontWeight: 'bold',
-      textAlign: 'center',
-    },
-    disabledButton: {
-      backgroundColor: themeColors.inputBorder,
-    },
-    disabledButtonText: {
-      color: themeColors.icon,
-      fontSize: 24,
-      fontWeight: 'bold',
-    },
-    countdownContainer: {
-      position: 'absolute',
-      bottom: insets.bottom + 120,
-      alignItems: 'center',
-    },
-    countdownLabel: {
-      fontSize: 16,
-      color: themeColors.text,
-      textAlign: 'center',
-    },
-    countdownTimer: {
-      fontSize: 36,
-      fontWeight: 'bold',
-      color: themeColors.tint,
-      marginTop: 10,
-      fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
-    },
-  });
-
-  const [dashboardState, setDashboardState] = useState({
-    isLoading: true,
-    status: 'INS',
-    countdownTarget: null,
-  });
+// --- Helper: Countdown Component ---
+const Countdown = ({ target, label, styles }: any) => {
   const [countdown, setCountdown] = useState('');
-  const [isCheckingIn, setIsCheckingIn] = useState(false);
-
-  const fetchDashboardData = React.useCallback(async () => {
-    try {
-      // Dùng user từ context để tránh phải fetch lại
-      if (user) {
-        setDashboardState({
-          isLoading: false,
-          status: user.account_status,
-          countdownTarget:
-            user.wct_active_ends_at || user.next_clc_prompt_at,
-        });
-      } else {
-        // Fallback nếu user context chưa sẵn sàng
-        const response = await api.get('/api/users/me');
-        const userData = response.data;
-        setDashboardState({
-          isLoading: false,
-          status: userData.account_status,
-          countdownTarget:
-            userData.wct_active_ends_at || userData.next_clc_prompt_at,
-        });
-      }
-    } catch (error) {
-      setDashboardState((prev) => ({ ...prev, isLoading: false }));
-      Alert.alert(t('errors.page_load_failed'), translateApiError(error));
-    }
-  }, [user, t]);
+  const { t } = useTranslation();
 
   useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
-
-  useEffect(() => {
-    if (!dashboardState.countdownTarget) {
+    if (!target) {
       setCountdown('');
       return;
     }
-
     const interval = setInterval(() => {
-      const targetTime = dashboardState.countdownTarget
-        ? new Date(dashboardState.countdownTarget).getTime()
-        : 0;
-      const now = new Date().getTime();
-      const distance = targetTime - now;
-
+      const distance = new Date(target).getTime() - new Date().getTime();
       if (distance < 0) {
         clearInterval(interval);
         setCountdown(t('dashboard_page.status_processing'));
-        setTimeout(fetchDashboardData, 5000);
         return;
       }
-
-      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-      const hours = Math.floor(
-        (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
-      );
-      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-      let countdownText = `${String(hours).padStart(2, '0')}:${String(
-        minutes,
-      ).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-      if (days > 0) {
-        countdownText = `${days}d ${countdownText}`;
-      }
-      setCountdown(countdownText);
+      const d = Math.floor(distance / (1000 * 60 * 60 * 24));
+      const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((distance % (1000 * 60)) / 1000);
+      let text = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      if (d > 0) text = `${d}d ${text}`;
+      setCountdown(text);
     }, 1000);
-
     return () => clearInterval(interval);
-  }, [dashboardState.countdownTarget, fetchDashboardData, t]);
+  }, [target, t]);
 
-  const handleCheckIn = async () => {
-    setIsCheckingIn(true);
+  return (
+    <View style={styles.countdownContainer}>
+      <Text style={styles.countdownLabel}>{label}</Text>
+      {countdown ? <Text style={styles.countdownTimer}>{countdown}</Text> : null}
+    </View>
+  );
+};
+
+// --- Main Dashboard Screen ---
+export default function DashboardScreen() {
+  const { t } = useTranslation();
+  const { user, refreshUser } = useAuth();
+  const { theme } = useTheme();
+  const router = useRouter();
+  const themeColors = Colors[theme];
+  const styles = createStyles(themeColors);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [ucmData, setUcmData] = useState<any>(null);
+  const [isActionLoading, setIsActionLoading] = useState(false);
+  const [pinModalAction, setPinModalAction] = useState<'check-in' | 'terminate' | null>(null);
+  // --- PIN Modal State ---
+  const [isPinModalVisible, setIsPinModalVisible] = useState(false);
+  const pinModalRef = useRef<PinModalRef>(null);
+
+  // --- Fix for infinite loop by using useRef for unstable refreshUser function ---
+  const refreshUserRef = useRef(refreshUser);
+  useEffect(() => {
+    refreshUserRef.current = refreshUser;
+  }, [refreshUser]);
+
+  const forceRefreshData = useCallback(async () => {
+    setIsActionLoading(false); // Fix for stuck disabled button
     try {
-      await api.post('/api/ucm/check-in');
-      Alert.alert(t('dashboard_page.alert_checkin_success'));
-      fetchDashboardData();
+      const latestUser = await refreshUserRef.current();
+      if (!latestUser) throw new Error("Failed to refresh user data.");
+
+      if (latestUser.account_status === 'FNS') {
+        setUcmData(null);
+      } else {
+        const response = await api.get('/api/ucm/full-state');
+        setUcmData(response.data);
+      }
     } catch (error) {
-      Alert.alert(
-        t('errors.checkin_failed', { message: translateApiError(error) }),
-      );
+      if ((error as any).response?.status !== 403) {
+        Alert.alert(t('errors.page_load_failed'), translateApiError(error));
+      }
     } finally {
-      setIsCheckingIn(false);
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [t]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setIsLoading(true);
+      forceRefreshData();
+    }, [forceRefreshData])
+  );
+
+  const onRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    forceRefreshData();
+  }, [forceRefreshData]);
+
+  // --- Action Handlers ---
+  const handleCheckIn = async () => {
+    if (!user) return;
+
+    if (user.use_pin_for_all_actions) {
+      setPinModalAction('check-in');
+      setIsPinModalVisible(true);
+    } else {
+      Alert.alert(
+        t('confirm_modal.default_title'),
+        t('ucm_page.prompts.confirm_im_checkin'),
+        [
+          { text: t('confirm_modal.btn_cancel'), style: 'cancel' },
+          { text: t('confirm_modal.btn_confirm'), onPress: () => performCheckIn(null) }
+        ]
+      );
     }
   };
 
+  const performCheckIn = async (pinCode: string | null) => {
+    setIsActionLoading(true);
+    setIsPinModalVisible(false);
+    try {
+      await api.post('/api/ucm/check-in', { pin_code: pinCode });
+      Toast.show({ type: 'success', text2: t('ucm_page.prompts.checkin_success') });
+      await forceRefreshData();
+    } catch (error) {
+      Alert.alert(t('errors.checkin_failed', { message: translateApiError(error) }));
+      pinModalRef.current?.resetPin();
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleStopFns = async () => {
+    if (!user) return;
+    if (user.use_pin_for_all_actions || user.has_pin) {
+      setPinModalAction('terminate');
+      setIsPinModalVisible(true);
+    } else {
+      Alert.alert(
+        t('fns_page.card_header'),
+        t('fns_page.confirm_terminate'),
+        [
+          { text: t('confirm_modal.btn_cancel'), style: 'cancel' },
+          { text: t('confirm_modal.btn_confirm'), style: 'destructive', onPress: () => performStopFns(null) },
+        ]
+      );
+    }
+  };
+
+  const performStopFns = async (pinCode: string | null) => {
+    setIsActionLoading(true);
+    setIsPinModalVisible(false);
+    try {
+      await api.post('/api/ucm/terminate', { pin_code: pinCode });
+      Toast.show({ type: 'success', text2: t('fns_page.success_terminated') });
+      await forceRefreshData(); // Làm mới lại dashboard để cập nhật trạng thái
+    } catch (error) {
+      Alert.alert(t('errors.title_error'), translateApiError(error));
+      pinModalRef.current?.resetPin();
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handlePinSubmit = (pin: string) => {
+    if (pinModalAction === 'check-in') {
+      performCheckIn(pin);
+    } else if (pinModalAction === 'terminate') {
+      performStopFns(pin);
+    }
+  };
+
+  // --- Render Logic ---
   const renderContent = () => {
-    if (dashboardState.isLoading) {
+    if (isLoading && !isRefreshing) {
       return <ActivityIndicator size="large" color={themeColors.tint} />;
     }
 
-    let mainButton;
+    let buttonText = '';
+    let buttonColor = themeColors.tint;
     let countdownLabel = '';
+    let countdownTarget = null;
+    let buttonAction = () => {};
 
-    switch (dashboardState.status) {
-      case 'ANS_WCT':
-        mainButton = (
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: themeColors.tint }]}
-            onPress={handleCheckIn}
-            disabled={isCheckingIn}>
-            {isCheckingIn ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text style={styles.actionButtonText}>
-                {t('dashboard_page.btn_check_in')}
-              </Text>
-            )}
-          </TouchableOpacity>
-        );
-        countdownLabel = t('dashboard_page.countdown_label_wct');
-        break;
-      case 'ANS_CLC':
-        mainButton = (
-          <View style={[styles.actionButton, styles.disabledButton]}>
-            <Text style={styles.disabledButtonText}>
-              {t('dashboard_page.btn_check_in')}
-            </Text>
-          </View>
-        );
-        countdownLabel = t('dashboard_page.countdown_label_clc');
-        break;
-      case 'INS':
-        mainButton = (
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: '#28a745' }]}
-            onPress={() => router.push('/(main)/ucm')}>
-            <Text style={styles.actionButtonText}>
-              {t('dashboard_page.btn_create_im')}
-            </Text>
-          </TouchableOpacity>
-        );
-        countdownLabel = t('dashboard_page.countdown_label_ins');
-        break;
-      case 'FNS':
-        mainButton = (
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: '#dc3545' }]}
-            onPress={() => {
-              /* Navigate to a dedicated FNS screen later */
-            }}>
-            <Text style={styles.actionButtonText}>
-              {t('dashboard_page.btn_stop_fns')}
-            </Text>
-          </TouchableOpacity>
-        );
-        countdownLabel = t('dashboard_page.countdown_label_fns');
-        break;
-      default:
-        mainButton = null;
-        countdownLabel = t('dashboard_page.countdown_label_unknown');
+    const hasIM = ucmData?.initialMessage;
+    const status = user?.account_status;
+
+    if (status === 'FNS') { // e. Đang trong FNS (Ưu tiên kiểm tra cao nhất)
+      buttonText = t('dashboard_page.btn_stop_fns');
+      buttonColor = '#dc3545'; // Red
+      countdownLabel = t('dashboard_page.countdown_label_fns');
+      buttonAction = handleStopFns;
+    } else if (!hasIM) { // a. Chưa có IM (Chỉ xảy ra khi status là INS)
+      buttonText = t('dashboard_page.btn_create_im');
+      buttonColor = '#28a745'; // Green
+      countdownLabel = t('dashboard_page.countdown_label_ins');
+      buttonAction = () => router.push('/(main)/ucm');
+    } else if (status === 'INS') { // b. Đã có IM nhưng chưa active
+      buttonText = t('dashboard_page.btn_activate_ucm');
+      buttonColor = '#0dcaf0'; // Info Blue
+      countdownLabel = t('dashboard_page.countdown_label_inactive_im');
+      buttonAction = () => router.push({ pathname: '/(main)/ucm', params: { autoAction: 'activate' } });
+    } else if (status === 'ANS_CLC') { // c. Đang trong CLC
+      buttonText = t('dashboard_page.btn_deactivate_ucm');
+      buttonColor = '#ffc107'; // Yellow
+      countdownLabel = t('ucm_page.im_section.countdown_clc'); 
+      countdownTarget = ucmData?.ucmState?.countdownUntil;
+      buttonAction = () => router.push({ pathname: '/(main)/ucm', params: { autoAction: 'stop' } });
+    } else if (status === 'ANS_WCT') { // d. Đang trong WCT
+      buttonText = t('dashboard_page.btn_check_in');
+      buttonColor = themeColors.tint; // Orange
+      countdownLabel = t('ucm_page.im_section.countdown_wct');
+      countdownTarget = ucmData?.ucmState?.countdownUntil;
+      buttonAction = handleCheckIn;
+    } else { // Trường hợp dự phòng
+      countdownLabel = t('dashboard_page.countdown_label_unknown');
     }
 
     return (
-      <>
-        {mainButton}
-        <View style={styles.countdownContainer}>
-          <Text style={styles.countdownLabel}>{countdownLabel}</Text>
-          {countdown ? (
-            <Text style={styles.countdownTimer}>{countdown}</Text>
-          ) : null}
-        </View>
-      </>
+      <View style={styles.contentContainer}>
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: buttonColor }]}
+          onPress={buttonAction}
+          disabled={isActionLoading}
+        >
+          {isActionLoading ? 
+            <ActivityIndicator color="#ffffff" /> : 
+            <Text style={styles.actionButtonText}>{buttonText}</Text>
+          }
+        </TouchableOpacity>
+        <Countdown target={countdownTarget} label={countdownLabel} styles={styles} />
+      </View>
     );
   };
 
   return (
     <View style={styles.container}>
-      {!dashboardState.isLoading && <DashboardHeader />}
-      {renderContent()}
+        <ScrollView
+            contentContainerStyle={styles.scrollContentContainer}
+            refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={themeColors.tint} />}
+        >
+            <DashboardHeader />
+            {renderContent()}
+        </ScrollView>
+        <PinModal
+            ref={pinModalRef}
+            isVisible={isPinModalVisible}
+            onClose={() => setIsPinModalVisible(false)}
+            onSubmit={handlePinSubmit}
+            promptText={
+                pinModalAction === 'terminate' 
+                ? t('fns_page.pin_prompt')
+                : t('dashboard_page.pin_prompt_checkin')
+            }
+        />
     </View>
   );
-};
+}
 
-export default DashboardScreen;
+const createStyles = (themeColors: any) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: themeColors.background,
+  },
+  scrollContentContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  contentContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
+  actionButton: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
+    padding: 10,
+  },
+  actionButtonText: {
+    color: '#ffffff',
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  countdownContainer: {
+    marginTop: 60,
+    alignItems: 'center',
+  },
+  countdownLabel: {
+    fontSize: 16,
+    color: themeColors.text,
+    textAlign: 'center',
+    minHeight: 40,
+  },
+  countdownTimer: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: themeColors.tint,
+    marginTop: 10,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+  },
+});

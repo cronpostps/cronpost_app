@@ -1,11 +1,17 @@
 // app/_layout.tsx
-// Version: 1.5.1
+// Version: 1.8.0 (Added SafeAreaProvider for proper layout)
 
+import { Ionicons } from '@expo/vector-icons';
 import messaging from '@react-native-firebase/messaging';
+import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+// FIX: Thêm import từ thư viện SafeArea
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { Colors } from '../src/constants/Colors';
 import '../src/locales/i18n';
@@ -13,8 +19,8 @@ import { AuthProvider, useAuth } from '../src/store/AuthContext';
 import { ThemeProvider, useTheme } from '../src/store/ThemeContext';
 import { useIamStore } from '../src/store/iamStore';
 
-// Silences the Firebase modular API deprecation warnings.
-// This is a temporary measure until a full migration to the v22 modular API is completed.
+SplashScreen.preventAutoHideAsync();
+
 declare global {
   var RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS: boolean;
 }
@@ -30,7 +36,6 @@ const InitialLayout = () => {
 
   useEffect(() => {
     if (isLoading) return;
-
     const inAuthGroup = segments[0] === '(main)';
 
     if (isAuthenticated && !inAuthGroup) {
@@ -49,50 +54,53 @@ const InitialLayout = () => {
   }
 
   return (
-    <Stack>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="signup" options={{ headerShown: false }} />
-      <Stack.Screen name="(main)" options={{ headerShown: false }} />
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="signup" />
+      <Stack.Screen name="(main)" />
       <Stack.Screen name="+not-found" />
-      <Stack.Screen name="forgot-password" options={{ headerShown: false }}
-      />
+      <Stack.Screen name="forgot-password" />
     </Stack>
   );
 };
 
 export default function RootLayout() {
   const router = useRouter();
+  
+  const [fontsLoaded, fontError] = useFonts({
+    ...Ionicons.font,
+  });
 
   useEffect(() => {
-    // Listener for foreground messages
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  useEffect(() => {
+    // ... (logic xử lý notification giữ nguyên)
     const unsubscribeFromForeground = messaging().onMessage(async remoteMessage => {
       console.log('A new FCM message arrived in foreground!', remoteMessage);
-
-      // Hiển thị Toast thông báo
       Toast.show({
         type: 'info',
         text1: remoteMessage.notification?.title,
         text2: remoteMessage.notification?.body,
         onPress: () => {
-          // Khi người dùng bấm vào Toast, điều hướng đến tin nhắn
           const { thread_id, message_id } = remoteMessage.data || {};
           if (thread_id && message_id) {
             router.push({
               pathname: '/(main)/iam/thread/[thread_id]',
               params: { 
-            thread_id: String(thread_id),
-            selected_message_id: String(message_id)
+                thread_id: String(thread_id),
+                selected_message_id: String(message_id)
               },
             });
           }
         }
       });
-      
-      // Cập nhật lại số tin nhắn chưa đọc
       useIamStore.getState().fetchUnreadCount();
     });
 
-    // Hàm xử lý điều hướng chung
     const handleNotificationNavigation = (remoteMessage: any) => {
       const { thread_id, message_id, screen } = remoteMessage.data || {};
       if (thread_id && message_id) {
@@ -108,13 +116,11 @@ export default function RootLayout() {
       }
     };
 
-    // Listener for notifications that opened the app from background
     const unsubscribeFromOpen = messaging().onNotificationOpenedApp(remoteMessage => {
       console.log('Notification caused app to open from background state:', remoteMessage);
       handleNotificationNavigation(remoteMessage);
     });
 
-    // Check if the app was opened from a quit state by a notification
     messaging()
       .getInitialNotification()
       .then(remoteMessage => {
@@ -130,14 +136,33 @@ export default function RootLayout() {
     };
   }, [router]);
 
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
+
+  const ThemedLayout = () => {
+    const { theme } = useTheme();
+    const themeColors = Colors[theme];
+    return (
+      // FIX: Bọc nội dung chính trong SafeAreaView để tự động né thanh trạng thái
+      <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.background }}>
+        <InitialLayout />
+        <Toast />
+        <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
+      </SafeAreaView>
+    );
+  };
+  
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider>
-        <AuthProvider>
-          <InitialLayout />
-          <Toast />
-        </AuthProvider>
-      </ThemeProvider>
-    </GestureHandlerRootView>
+    // FIX: Bọc toàn bộ ứng dụng trong SafeAreaProvider
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <ThemeProvider>
+          <AuthProvider>
+            <ThemedLayout />
+          </AuthProvider>
+        </ThemeProvider>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }

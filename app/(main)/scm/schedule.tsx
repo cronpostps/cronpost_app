@@ -1,8 +1,7 @@
 // app/(main)/scm/schedule.tsx
-// version 1.1.0
+// version 1.2.1
 
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import dayjs from 'dayjs';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -23,7 +22,10 @@ import {
 import Toast from 'react-native-toast-message';
 import api from '../../../src/api/api';
 import CustomPickerModal, { PickerOption } from '../../../src/components/CustomPickerModal';
+import SafeDateTimePicker from '../../../src/components/SafeDateTimePicker';
+import WheelPickerModal from '../../../src/components/WheelPickerModal';
 import { Colors } from '../../../src/constants/Colors';
+import { useAuth } from '../../../src/store/AuthContext';
 import { useTheme } from '../../../src/store/ThemeContext';
 import { translateApiError } from '../../../src/utils/errorTranslator';
 
@@ -45,6 +47,7 @@ export default function ScmScheduleScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { theme } = useTheme();
+  const { user } = useAuth();
   const themeColors = Colors[theme];
   const styles = createStyles(themeColors);
 
@@ -66,7 +69,7 @@ export default function ScmScheduleScreen() {
   const [isLoading, setIsLoading] = useState(!!params.scmId);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [scheduleType, setScheduleType] = useState<'loop' | 'unloop'>('loop');
-  
+
   const [unloopDate, setUnloopDate] = useState(new Date());
   const [showUnloopDatePicker, setShowUnloopDatePicker] = useState(false);
   const [showUnloopTimePicker, setShowUnloopTimePicker] = useState(false);
@@ -76,23 +79,70 @@ export default function ScmScheduleScreen() {
   const [loopIntervalDays, setLoopIntervalDays] = useState('1');
   const [loopDayOfWeek, setLoopDayOfWeek] = useState<PickerOption>({ value: 'Mon', label: t('ucm_page.day_mon') });
   const [loopDateOfMonth, setLoopDateOfMonth] = useState('1');
-  const [loopLunarMonth, setLoopLunarMonth] = useState('1');
-  const [loopLunarDay, setLoopLunarDay] = useState('1');
+  const [loopLunarMonth, setLoopLunarMonth] = useState<PickerOption | null>(null);
+  const [loopLunarDay, setLoopLunarDay] = useState<PickerOption | null>(null);
   const [loopIsLeapMonth, setLoopIsLeapMonth] = useState(false);
   const [loopSendingTime, setLoopSendingTime] = useState(new Date());
   const [showLoopTimePicker, setShowLoopTimePicker] = useState(false);
   const [repeatNumber, setRepeatNumber] = useState('1');
+  const [loopMonthOfYear, setLoopMonthOfYear] = useState<PickerOption | null>(null);
+  const [loopDayOfYear, setLoopDayOfYear] = useState<PickerOption | null>(null);
+  const [dateOfYearWarning, setDateOfYearWarning] = useState<string | null>(null);
 
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerOptions, setPickerOptions] = useState<PickerOption[]>([]);
   const [pickerTitle, setPickerTitle] = useState('');
   const [currentPicker, setCurrentPicker] = useState<string | null>(null);
+  const [pickerStyle, setPickerStyle] = useState<'list' | 'wheel'>('list');
+  const monthOptions = useMemo(() => {
+    const monthAbbrs = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    return monthAbbrs.map((abbr, index) => ({
+      value: String(index + 1),
+      label: t(`ucm_page.month_${abbr}`),
+    }));
+  }, [t]);
 
+  const dayOptionsForMonth = useMemo(() => {
+    if (!loopMonthOfYear) return [];
+    const month = parseInt(loopMonthOfYear.value, 10);
+    let daysInMonth;
+
+    if ([4, 6, 9, 11].includes(month)) {
+      daysInMonth = 30;
+    } else if (month === 2) {
+      daysInMonth = 29; // Luôn cho phép chọn ngày 29 để xử lý cảnh báo
+    } else {
+      daysInMonth = 31;
+    }
+    return Array.from({ length: daysInMonth }, (_, i) => ({
+      value: String(i + 1),
+      label: String(i + 1),
+    }));
+  }, [loopMonthOfYear]);
+
+  const lunarMonthOptions = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => ({
+      value: String(i + 1),
+      label: String(i + 1),
+    }));
+  }, []);
+
+  const lunarDayOptions = useMemo(() => {
+    return Array.from({ length: 30 }, (_, i) => ({
+      value: String(i + 1),
+      label: String(i + 1),
+    }));
+  }, []);
+
+  const deviceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const timezone = user?.timezone || deviceTimezone;
+  
   const loopTypeOptions = useMemo(() => [
     { value: 'minutes', label: t('scm_page.schedule_form.option_by_minutes') },
     { value: 'days', label: t('scm_page.schedule_form.option_by_days') },
     { value: 'day_of_week', label: t('scm_page.schedule_form.option_day_of_week') },
     { value: 'date_of_month', label: t('scm_page.schedule_form.option_date_of_month') },
+    { value: 'date_of_year', label: t('scm_page.schedule_form.option_date_of_year') },
     { value: 'date_of_lunar_year', label: t('scm_page.schedule_form.option_date_of_lunar_year') },
   ], [t]);
 
@@ -100,7 +150,13 @@ export default function ScmScheduleScreen() {
     value: day.charAt(0).toUpperCase() + day.slice(1),
     label: t(`ucm_page.day_${day}`)
   })), [t]);
-  
+
+  const userDayjsFormat = useMemo(() => {
+      if (user?.date_format === 'mm/dd/yyyy') return 'MM/DD/YYYY';
+      if (user?.date_format === 'yyyy/mm/dd') return 'YYYY/MM/DD';
+      return 'DD/MM/YYYY'; // Mặc định
+  }, [user?.date_format]);
+
   useEffect(() => {
     const defaultTime = new Date();
     defaultTime.setHours(9, 0, 0, 0);
@@ -134,10 +190,23 @@ export default function ScmScheduleScreen() {
           setLoopIntervalDays(String(scmData.loop_interval_days || 1));
           setLoopDateOfMonth(String(scmData.loop_date_of_month || 1));
           
+          // Xử lý điền dữ liệu cho Date of Year (Dương lịch)
+          if (scmData.loop_type === 'date_of_year' && scmData.loop_date_of_year) {
+            const [month, day] = scmData.loop_date_of_year.split('-');
+            const monthOpt = monthOptions.find(m => m.value === String(parseInt(month, 10)));
+            if (monthOpt) {
+              setLoopMonthOfYear(monthOpt);
+            }
+            setLoopDayOfYear({ value: String(parseInt(day, 10)), label: String(parseInt(day, 10)) });
+          }
+
+          // Xử lý điền dữ liệu cho Date of Lunar Year (Âm lịch)
           if (scmData.loop_type === 'date_of_lunar_year' && scmData.loop_date_of_year) {
             const [month, day] = scmData.loop_date_of_year.split('-');
-            setLoopLunarMonth(String(parseInt(month, 10)));
-            setLoopLunarDay(String(parseInt(day, 10)));
+            const monthInt = parseInt(month, 10);
+            const dayInt = parseInt(day, 10);
+            setLoopLunarMonth({ value: String(monthInt), label: String(monthInt) });
+            setLoopLunarDay({ value: String(dayInt), label: String(dayInt) });
           }
           
           setLoopIsLeapMonth(scmData.loop_is_leap_month || false);
@@ -162,74 +231,23 @@ export default function ScmScheduleScreen() {
       }
     };
     fetchScheduleData();
-  }, [params.scmId, router, t, loopTypeOptions, dayOfWeekOptions]);
+  }, [params.scmId, router, t, loopTypeOptions, dayOfWeekOptions, monthOptions]);
   
-  // const handleSubmit = async () => {
-  //   setIsSubmitting(true);
-  //   try {
-  //     let schedulePayload: Partial<ScheduleData> = {
-  //       schedule_type: scheduleType,
-  //       repeat_number: parseInt(repeatNumber, 10) || 1,
-  //     };
-
-  //     if (scheduleType === 'unloop') {
-  //       schedulePayload.unloop_send_at = unloopDate.toISOString();
-  //     } else {
-  //       schedulePayload.loop_type = loopType.value;
-  //       if (loopType.value !== 'minutes') {
-  //           schedulePayload.loop_sending_time = dayjs(loopSendingTime).format('HH:mm');
-  //       }
-  //       switch(loopType.value) {
-  //           case 'minutes': schedulePayload.loop_interval_minutes = parseInt(loopIntervalMinutes, 10); break;
-  //           case 'days': schedulePayload.loop_interval_days = parseInt(loopIntervalDays, 10); break;
-  //           case 'day_of_week': schedulePayload.loop_day_of_week = loopDayOfWeek.value; break;
-  //           case 'date_of_month': schedulePayload.loop_date_of_month = parseInt(loopDateOfMonth, 10); break;
-  //           case 'date_of_lunar_year':
-  //               schedulePayload.loop_date_of_year = `${String(loopLunarMonth).padStart(2, '0')}-${String(loopLunarDay).padStart(2, '0')}`;
-  //               schedulePayload.loop_is_leap_month = loopIsLeapMonth;
-  //               break;
-  //       }
-  //     }
-
-  //     let apiPayload;
-  //     const finalMessageData = {
-  //       title: messageData.subject,
-  //       content: messageData.content,
-  //       receiver_addresses: messageData.recipients,
-  //       attachment_file_ids: messageData.attachments.map((f: any) => f.id),
-  //       sending_method: params.sendingMethod,
-  //     };
-
-  //     if (params.scmId) {
-  //       apiPayload = {
-  //         message: finalMessageData,
-  //         schedule: schedulePayload,
-  //       };
-  //       await api.put(`/api/scm/${params.scmId}`, apiPayload);
-  //     } else {
-  //       apiPayload = {
-  //         message: finalMessageData,
-  //         schedule: schedulePayload,
-  //         is_draft: false,
-  //       };
-  //       await api.post('/api/scm/', apiPayload);
-  //     }
-
-  //     Toast.show({
-  //       type: 'success',
-  //       text1: t('scm_page.schedule_success_title'),
-  //       text2: t('scm_page.schedule_success_body')
-  //     });
-  //     router.replace('/scm');
-
-  //   } catch (error) {
-  //     Alert.alert(t('errors.title_error'), translateApiError(error));
-  //   } finally {
-  //     setIsSubmitting(false);
-  //   }
-  // };
-
-// app/(main)/scm/schedule.tsx
+  useEffect(() => {
+    // Tự động điều chỉnh ngày khi tháng thay đổi
+    if (loopDayOfYear && loopMonthOfYear) {
+      const maxDays = dayOptionsForMonth.length;
+      if (parseInt(loopDayOfYear.value, 10) > maxDays) {
+        setLoopDayOfYear({ value: String(maxDays), label: String(maxDays) });
+      }
+    }
+    // Cảnh báo ngày 29/02
+    if (loopMonthOfYear?.value === '2' && loopDayOfYear?.value === '29') {
+      setDateOfYearWarning(t('warnings.feb_29_skip'));
+    } else {
+      setDateOfYearWarning(null);
+    }
+  }, [loopMonthOfYear, loopDayOfYear, dayOptionsForMonth, t]);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -251,8 +269,15 @@ export default function ScmScheduleScreen() {
             case 'days': schedulePayload.loop_interval_days = parseInt(loopIntervalDays, 10); break;
             case 'day_of_week': schedulePayload.loop_day_of_week = loopDayOfWeek.value; break;
             case 'date_of_month': schedulePayload.loop_date_of_month = parseInt(loopDateOfMonth, 10); break;
+            case 'date_of_year':
+                if (loopMonthOfYear && loopDayOfYear) {
+                  schedulePayload.loop_date_of_year = `${String(loopMonthOfYear.value).padStart(2, '0')}-${String(loopDayOfYear.value).padStart(2, '0')}`;
+                }
+                break;
             case 'date_of_lunar_year':
-                schedulePayload.loop_date_of_year = `${String(loopLunarMonth).padStart(2, '0')}-${String(loopLunarDay).padStart(2, '0')}`;
+                if (loopLunarMonth && loopLunarDay) {
+                  schedulePayload.loop_date_of_year = `${String(loopLunarMonth.value).padStart(2, '0')}-${String(loopLunarDay.value).padStart(2, '0')}`;
+                }
                 schedulePayload.loop_is_leap_month = loopIsLeapMonth;
                 break;
         }
@@ -320,35 +345,11 @@ export default function ScmScheduleScreen() {
       }
   }
 
-  const onUnloopDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-    setShowUnloopDatePicker(Platform.OS === 'ios');
-    if (selectedDate) {
-      const newDate = new Date(unloopDate);
-      newDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
-      setUnloopDate(newDate);
-    }
-  };
-
-  const onUnloopTimeChange = (event: DateTimePickerEvent, selectedTime?: Date) => {
-    setShowUnloopTimePicker(Platform.OS === 'ios');
-    if (selectedTime) {
-      const newDate = new Date(unloopDate);
-      newDate.setHours(selectedTime.getHours(), selectedTime.getMinutes());
-      setUnloopDate(newDate);
-    }
-  };
-  
-  const onLoopTimeChange = (event: DateTimePickerEvent, selectedTime?: Date) => {
-    setShowLoopTimePicker(Platform.OS === 'ios');
-    if (selectedTime) {
-      setLoopSendingTime(selectedTime);
-    }
-  };
-
-  const openPicker = (pickerName: string, title: string, options: PickerOption[]) => {
+  const openPicker = (pickerName: string, title: string, options: PickerOption[], style: 'list' | 'wheel' = 'list') => {
     setCurrentPicker(pickerName);
     setPickerTitle(title);
     setPickerOptions(options);
+    setPickerStyle(style);
     setPickerVisible(true);
   };
 
@@ -356,6 +357,10 @@ export default function ScmScheduleScreen() {
     switch (currentPicker) {
       case 'loopType': setLoopType(option); break;
       case 'loopDayOfWeek': setLoopDayOfWeek(option); break;
+      case 'loopMonthOfYear': setLoopMonthOfYear(option); break;
+      case 'loopDayOfYear': setLoopDayOfYear(option); break;
+      case 'loopLunarMonth': setLoopLunarMonth(option); break;
+      case 'loopLunarDay': setLoopLunarDay(option); break;
     }
   };
   
@@ -396,16 +401,53 @@ export default function ScmScheduleScreen() {
                 {parseInt(loopDateOfMonth, 10) > 28 && <Text style={styles.warningText}>{t('warnings.date_of_month_skip')}</Text>}
             </View>
         )}
-         {loopType.value === 'date_of_lunar_year' && (
+        {loopType.value === 'date_of_year' && (
+          <View>
+            <Text style={styles.formLabel}>{t('scm_page.schedule_form.label_date')}</Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                style={[styles.pickerButton, { flex: 1 }]}
+                onPress={() => openPicker('loopMonthOfYear', t('ucm_page.label_month'), monthOptions, 'wheel')}
+              >
+                <Text style={styles.pickerButtonText}>{loopMonthOfYear?.label || t('ucm_page.label_month')}</Text>
+                <Ionicons name="chevron-down" size={20} color={themeColors.icon} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.pickerButton, { flex: 1 }]}
+                onPress={() => openPicker('loopDayOfYear', t('ucm_page.label_day'), dayOptionsForMonth, 'wheel')}
+                disabled={!loopMonthOfYear}
+              >
+                <Text style={[styles.pickerButtonText, !loopMonthOfYear && { color: themeColors.icon }]}>
+                  {loopDayOfYear?.label || t('ucm_page.label_day')}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color={themeColors.icon} />
+              </TouchableOpacity>
+            </View>
+            {dateOfYearWarning && <Text style={styles.warningText}>{dateOfYearWarning}</Text>}
+          </View>
+        )}
+        {loopType.value === 'date_of_lunar_year' && (
           <View>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.formLabel}>{t('scm_page.schedule_form.label_lunar_month')}</Text>
-                <TextInput style={styles.textInput} value={loopLunarMonth} onChangeText={setLoopLunarMonth} keyboardType="number-pad" maxLength={2} />
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => openPicker('loopLunarMonth', t('scm_page.schedule_form.label_lunar_month'), lunarMonthOptions, 'wheel')}
+                >
+                  <Text style={styles.pickerButtonText}>{loopLunarMonth?.label || '...'}</Text>
+                  <Ionicons name="chevron-down" size={20} color={themeColors.icon} />
+                </TouchableOpacity>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.formLabel}>{t('scm_page.schedule_form.label_lunar_day')}</Text>
-                <TextInput style={styles.textInput} value={loopLunarDay} onChangeText={setLoopLunarDay} keyboardType="number-pad" maxLength={2} />
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => openPicker('loopLunarDay', t('scm_page.schedule_form.label_lunar_day'), lunarDayOptions, 'wheel')}
+                >
+                  <Text style={styles.pickerButtonText}>{loopLunarDay?.label || '...'}</Text>
+                  <Ionicons name="chevron-down" size={20} color={themeColors.icon} />
+                </TouchableOpacity>
               </View>
             </View>
             <View style={styles.switchContainer}>
@@ -506,7 +548,7 @@ export default function ScmScheduleScreen() {
               <View style={styles.formSection}>
                 <Text style={styles.formLabel}>{t('ucm_page.schedule_form_fm.label_specific_date')}</Text>
                 <TouchableOpacity style={styles.pickerButton} onPress={() => setShowUnloopDatePicker(true)}>
-                    <Text style={styles.pickerButtonText}>{dayjs(unloopDate).format('DD/MM/YYYY')}</Text>
+                    <Text style={styles.pickerButtonText}>{dayjs(unloopDate).format(userDayjsFormat)}</Text>
                     <Ionicons name="calendar-outline" size={20} color={themeColors.icon} />
                 </TouchableOpacity>
 
@@ -522,31 +564,66 @@ export default function ScmScheduleScreen() {
         </View>
       </ScrollView>
 
-      {showUnloopDatePicker && (
-        <DateTimePicker
-          value={unloopDate}
-          mode="date"
-          display="default"
-          onChange={onUnloopDateChange}
-        />
-      )}
-      {showUnloopTimePicker && (
-        <DateTimePicker
-          value={unloopDate}
-          mode="time"
-          display="default"
-          onChange={onUnloopTimeChange}
-        />
-      )}
-      {showLoopTimePicker && <DateTimePicker value={loopSendingTime} mode="time" display="default" onChange={onLoopTimeChange} />}
-      
-      <CustomPickerModal
-        isVisible={pickerVisible}
-        options={pickerOptions}
-        title={pickerTitle}
-        onClose={() => setPickerVisible(false)}
-        onSelect={onPickerSelect}
+      <SafeDateTimePicker
+        isVisible={showUnloopDatePicker}
+        value={unloopDate}
+        mode="date"
+        onClose={() => setShowUnloopDatePicker(false)}
+        onSelect={(date) => {
+            const newDate = new Date(unloopDate);
+            newDate.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+            setUnloopDate(newDate);
+        }}
+        timeZoneName={timezone}
       />
+      <SafeDateTimePicker
+        isVisible={showUnloopTimePicker}
+        value={unloopDate}
+        mode="time"
+        onClose={() => setShowUnloopTimePicker(false)}
+        onSelect={(date) => {
+            const newDate = new Date(unloopDate);
+            newDate.setHours(date.getHours(), date.getMinutes());
+            setUnloopDate(newDate);
+        }}
+        timeZoneName={timezone}
+      />
+      <SafeDateTimePicker
+        isVisible={showLoopTimePicker}
+        value={loopSendingTime}
+        mode="time"
+        onClose={() => setShowLoopTimePicker(false)}
+        onSelect={setLoopSendingTime}
+        timeZoneName={timezone}
+      />
+      
+      {pickerStyle === 'list' && (
+        <CustomPickerModal
+          isVisible={pickerVisible}
+          options={pickerOptions}
+          title={pickerTitle}
+          onClose={() => setPickerVisible(false)}
+          onSelect={onPickerSelect}
+        />
+      )}
+      
+      {pickerStyle === 'wheel' && (
+        <WheelPickerModal
+          isVisible={pickerVisible}
+          options={pickerOptions}
+          title={pickerTitle}
+          initialValue={
+            currentPicker === 'loopMonthOfYear' ? loopMonthOfYear :
+            currentPicker === 'loopDayOfYear' ? loopDayOfYear :
+            currentPicker === 'loopLunarMonth' ? loopLunarMonth :
+            currentPicker === 'loopLunarDay' ? loopLunarDay :
+            null
+          }
+          onClose={() => setPickerVisible(false)}
+          onSelect={onPickerSelect}
+        />
+      )}
+
     </SafeAreaView>
   );
 }

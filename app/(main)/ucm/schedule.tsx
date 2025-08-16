@@ -1,8 +1,7 @@
 // app/(main)/ucm/schedule.tsx
-// Version: 2.0.1
+// Version: 2.2.1
 
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import dayjs from 'dayjs';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -23,10 +22,13 @@ import Toast from 'react-native-toast-message';
 
 import api from '../../../src/api/api';
 import CustomPickerModal, { PickerOption } from '../../../src/components/CustomPickerModal';
+import SafeDateTimePicker from '../../../src/components/SafeDateTimePicker';
+import WheelPickerModal from '../../../src/components/WheelPickerModal';
 import { Colors } from '../../../src/constants/Colors';
+import { useAuth } from '../../../src/store/AuthContext';
 import { useTheme } from '../../../src/store/ThemeContext';
 import { translateApiError } from '../../../src/utils/errorTranslator';
-import { FMSchedule, FollowUpMessage, IMSchedule } from './index'; // Import types from index
+import { FMSchedule, FollowUpMessage, IMSchedule } from './index';
 
 // --- Type Definitions ---
 type MessageType = 'IM' | 'FM';
@@ -36,9 +38,9 @@ export default function UcmScheduleScreen() {
     const { t } = useTranslation();
     const router = useRouter();
     const { theme } = useTheme();
+    const { user } = useAuth();
     const themeColors = Colors[theme];
     const styles = createStyles(themeColors);
-
     const params = useLocalSearchParams<{
         messageType: MessageType;
         ucmId?: string;
@@ -61,32 +63,44 @@ export default function UcmScheduleScreen() {
     const [isLoading, setIsLoading] = useState(!!params.ucmId);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('loop');
-    
+    const deviceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const timezone = user?.timezone || deviceTimezone;  
+     
     // --- IM State ---
     const [imClcType, setImClcType] = useState<PickerOption>({ value: 'every_day', label: t('ucm_page.schedule_form_im.option_every_day') });
     const [imClcDaysInterval, setImClcDaysInterval] = useState('2');
     const [imClcDayOfWeek, setImClcDayOfWeek] = useState<PickerOption>({ value: 'Mon', label: t('ucm_page.day_mon') });
     const [imClcDateOfMonth, setImClcDateOfMonth] = useState('1');
-    const [imClcDate, setImClcDate] = useState(new Date()); // For date_of_year and unloop
+    const [imClcDate, setImClcDate] = useState(new Date());
     const [imClcPromptTime, setImClcPromptTime] = useState(new Date());
     const [imWctValue, setImWctValue] = useState('24');
     const [imWctUnit, setImWctUnit] = useState<PickerOption>({ value: 'hours', label: t('ucm_page.time_unit_hours') });
     const [showImDatePicker, setShowImDatePicker] = useState(false);
     const [showImTimePicker, setShowImTimePicker] = useState(false);
+    const [showImTimePickerOneTime, setShowImTimePickerOneTime] = useState(false);
 
     // --- FM State ---
     const [fmTriggerType, setFmTriggerType] = useState<PickerOption>({ value: 'days_after_im_sent', label: t('ucm_page.schedule_form_fm.option_days_after') });
     const [fmDaysAfter, setFmDaysAfter] = useState('1');
     const [fmDayOfWeek, setFmDayOfWeek] = useState<PickerOption>({ value: 'Mon', label: t('ucm_page.day_mon') });
     const [fmDateOfMonth, setFmDateOfMonth] = useState('1');
-    const [fmDate, setFmDate] = useState(new Date()); // For date_of_year and unloop
-    const [fmSendingTime, setFmSendingTime] = useState(new Date());
+    const [fmDate, setFmDate] = useState(new Date());
     const [fmRepeat, setFmRepeat] = useState('1');
     const [showFmDatePicker, setShowFmDatePicker] = useState(false);
     const [showFmTimePicker, setShowFmTimePicker] = useState(false);
-
+    const [showFmTimePickerOneTime, setShowFmTimePickerOneTime] = useState(false);
+    const [imDateOfMonthWarning, setImDateOfMonthWarning] = useState<string | null>(null);
+    const [imDateOfYearWarning, setImDateOfYearWarning] = useState<string | null>(null);
+    const [fmDateOfMonthWarning, setFmDateOfMonthWarning] = useState<string | null>(null);
+    const [fmDateOfYearWarning, setFmDateOfYearWarning] = useState<string | null>(null);
+    const isRepeatDisabled = fmTriggerType.value === 'days_after_im_sent' && fmDaysAfter === '0';
+    const [fmMonthOfYear, setFmMonthOfYear] = useState<PickerOption | null>(null);
+    const [fmDayOfYear, setFmDayOfYear] = useState<PickerOption | null>(null);
+    const [imMonthOfYear, setImMonthOfYear] = useState<PickerOption | null>(null);
+    const [imDayOfYear, setImDayOfYear] = useState<PickerOption | null>(null);
     // --- Picker State ---
     const [pickerVisible, setPickerVisible] = useState(false);
+    const [pickerStyle, setPickerStyle] = useState<'list' | 'wheel'>('list');
     const [pickerOptions, setPickerOptions] = useState<PickerOption[]>([]);
     const [pickerTitle, setPickerTitle] = useState('');
     const [currentPicker, setCurrentPicker] = useState<string | null>(null);
@@ -110,6 +124,44 @@ export default function UcmScheduleScreen() {
         { value: 'hours', label: t('ucm_page.time_unit_hours') },
         { value: 'minutes', label: t('ucm_page.time_unit_mins') }
     ], [t]);
+
+    const monthOptions = useMemo(() => {
+        const monthKeys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+        return monthKeys.map((key, index) => ({
+            value: String(index + 1),
+            label: t(`ucm_page.month_${key}`),
+        }));
+    }, [t]);
+
+    const dayOptionsForMonth = useMemo(() => {
+        if (!fmMonthOfYear) return [];
+        const month = parseInt(fmMonthOfYear.value, 10);
+        const daysInMonth = dayjs().month(month - 1).daysInMonth();
+        // Đặc biệt xử lý tháng 2 cho năm nhuận
+        const finalDays = month === 2 ? 29 : daysInMonth;
+        return Array.from({ length: finalDays }, (_, i) => ({
+            value: String(i + 1),
+            label: String(i + 1),
+        }));
+    }, [fmMonthOfYear]);
+
+    const dayOptionsForIMMonth = useMemo(() => {
+        if (!imMonthOfYear) return [];
+        const month = parseInt(imMonthOfYear.value, 10);
+        const daysInMonth = dayjs().month(month - 1).daysInMonth();
+        // Xử lý đơn giản cho tháng 2 có 29 ngày
+        const finalDays = month === 2 ? 29 : daysInMonth;
+        return Array.from({ length: finalDays }, (_, i) => ({
+            value: String(i + 1),
+            label: String(i + 1),
+        }));
+    }, [imMonthOfYear]);
+
+    const userDayjsFormat = useMemo(() => {
+        if (user?.date_format === 'mm/dd/yyyy') return 'MM/DD/YYYY';
+        if (user?.date_format === 'yyyy/mm/dd') return 'YYYY/MM/DD';
+        return 'DD MMMM, YYYY'; // Giữ lại định dạng cũ làm mặc định
+    }, [user?.date_format]);
 
     const populateForm = useCallback((schedule: IMSchedule | FMSchedule) => {
         if (params.messageType === 'IM') {
@@ -143,33 +195,44 @@ export default function UcmScheduleScreen() {
             const isUnloop = fmSchedule.trigger_type === 'specific_date';
             setScheduleMode(isUnloop ? 'unloop' : 'loop');
             
+            let finalFmDate = new Date();
+            finalFmDate.setHours(9, 0, 0, 0);
             if (isUnloop && fmSchedule.specific_date_value) {
-                setFmDate(dayjs(fmSchedule.specific_date_value).toDate());
+                // Nếu là unloop, lấy cả ngày và giờ từ specific_date_value
+                finalFmDate = dayjs(fmSchedule.specific_date_value).toDate();
             } else {
+                // Nếu là loop, chỉ lấy giờ từ sending_time_of_day và gán vào ngày hiện tại
                 const triggerOption = fmTriggerTypeOptions.find(opt => opt.value === fmSchedule.trigger_type) || fmTriggerTypeOptions[0];
                 setFmTriggerType(triggerOption);
                 setFmDaysAfter(String(fmSchedule.days_after_im_value || '1'));
                 const dayOption = dayOfWeekOptions.find(d => d.value === fmSchedule.day_of_week_value) || dayOfWeekOptions[0];
                 setFmDayOfWeek(dayOption);
                 setFmDateOfMonth(String(fmSchedule.date_of_month_value || '1'));
-                 if (fmSchedule.date_of_year_value) {
+                if (fmSchedule.date_of_year_value) {
                     const [day, month] = fmSchedule.date_of_year_value.split('/');
-                    const newDate = new Date();
-                    newDate.setMonth(parseInt(month, 10) - 1, parseInt(day, 10));
-                    setFmDate(newDate);
+                    const monthOpt = monthOptions.find(m => m.value === String(parseInt(month, 10)));
+                    setFmMonthOfYear(monthOpt || null);
+                    setFmDayOfYear({ value: String(parseInt(day, 10)), label: String(parseInt(day, 10)) });
                 }
             }
-            if (fmSchedule.sending_time_of_day) setFmSendingTime(dayjs(`1970-01-01T${fmSchedule.sending_time_of_day}`).toDate());
+
+            // Luôn áp dụng giờ từ sending_time_of_day nếu có, ghi đè lên giờ mặc định hoặc giờ từ specific_date_value
+            if (fmSchedule.sending_time_of_day) {
+                const timeFromApi = dayjs(`1970-01-01T${fmSchedule.sending_time_of_day}`);
+                finalFmDate.setHours(timeFromApi.hour(), timeFromApi.minute());
+            }
+
+            setFmDate(finalFmDate); // Cập nhật state một lần duy nhất với giá trị đúng
             setFmRepeat(String(fmSchedule.repeat_number || '1'));
         }
-    }, [params.messageType, dayOfWeekOptions, imClcTypeOptions, fmTriggerTypeOptions, wctUnitOptions]);
+    }, [params.messageType, dayOfWeekOptions, imClcTypeOptions, fmTriggerTypeOptions, wctUnitOptions, monthOptions]);
 
     // --- Effects ---
     useEffect(() => {
         const defaultTime = new Date();
         defaultTime.setHours(9, 0, 0, 0);
         setImClcPromptTime(defaultTime);
-        setFmSendingTime(defaultTime);
+        setFmDate(defaultTime);
 
         const fetchSchedule = async () => {
             if (!params.ucmId) {
@@ -203,7 +266,63 @@ export default function UcmScheduleScreen() {
 
         fetchSchedule();
     }, [params.ucmId, params.messageType, t, populateForm]);
-    
+
+    useEffect(() => {
+        if (parseInt(imClcDateOfMonth, 10) > 29) {
+            setImDateOfMonthWarning(t('warnings.date_of_month_skip'));
+        } else {
+            setImDateOfMonthWarning(null);
+        }
+    }, [imClcDateOfMonth, t]);
+
+    useEffect(() => {
+        if (dayjs(imClcDate).format('DD/MM') === '29/02') {
+            setImDateOfYearWarning(t('warnings.feb_29_skip'));
+        } else {
+            setImDateOfYearWarning(null);
+        }
+    }, [imClcDate, t]);
+
+    useEffect(() => {
+        if (parseInt(fmDateOfMonth, 10) > 29) {
+            setFmDateOfMonthWarning(t('warnings.date_of_month_skip'));
+        } else {
+            setFmDateOfMonthWarning(null);
+        }
+    }, [fmDateOfMonth, t]);
+
+    useEffect(() => {
+        if (dayjs(fmDate).format('DD/MM') === '29/02') {
+            setFmDateOfYearWarning(t('warnings.feb_29_skip'));
+        } else {
+            setFmDateOfYearWarning(null);
+        }
+    }, [fmDate, t]);
+
+    useEffect(() => {
+        if (fmTriggerType.value === 'days_after_im_sent' && fmDaysAfter === '0') {
+            if (fmRepeat !== '1') {
+                setFmRepeat('1');
+            }
+        }
+    }, [fmTriggerType, fmDaysAfter, fmRepeat]);
+
+    useEffect(() => {
+        // Tự động điều chỉnh ngày khi tháng thay đổi để tránh ngày không hợp lệ
+        if (fmDayOfYear && fmMonthOfYear) {
+            const maxDays = dayOptionsForMonth.length;
+            if (parseInt(fmDayOfYear.value, 10) > maxDays) {
+                setFmDayOfYear({ value: String(maxDays), label: String(maxDays) });
+            }
+        }
+        // Hiển thị cảnh báo cho ngày 29/02
+        if (fmMonthOfYear?.value === '2' && fmDayOfYear?.value === '29') {
+            setFmDateOfYearWarning(t('warnings.feb_29_skip'));
+        } else {
+            setFmDateOfYearWarning(null);
+        }
+    }, [fmMonthOfYear, fmDayOfYear, dayOptionsForMonth, t]);
+
     // --- Handlers ---
     const handleSubmit = async () => {
         setIsSubmitting(true);
@@ -232,7 +351,9 @@ export default function UcmScheduleScreen() {
                         clc_day_number_interval: imClcType.value === 'specific_days' ? parseInt(imClcDaysInterval, 10) : undefined,
                         clc_day_of_week: imClcType.value === 'day_of_week' ? imClcDayOfWeek.value : undefined,
                         clc_date_of_month: imClcType.value === 'date_of_month' ? parseInt(imClcDateOfMonth, 10) : undefined,
-                        clc_date_of_year: imClcType.value === 'date_of_year' ? dayjs(imClcDate).format('DD/MM') : undefined,
+                        clc_date_of_year: imClcType.value === 'date_of_year' && imDayOfYear && imMonthOfYear
+                            ? `${String(imDayOfYear.value).padStart(2, '0')}/${String(imMonthOfYear.value).padStart(2, '0')}`
+                            : undefined,
                     };
                 } else {
                     const combinedDateTime = dayjs(imClcDate).format('YYYY-MM-DDTHH:mm:ss');
@@ -246,18 +367,31 @@ export default function UcmScheduleScreen() {
                 }
             } else { // FM
                 endpoint = isEditing ? `/api/ucm/fm/${params.ucmId}` : '/api/ucm/fm';
-                 if (scheduleMode === 'loop') {
+                if (scheduleMode === 'loop') {
                     payload.schedule = {
                         trigger_type: fmTriggerType.value,
-                        sending_time_of_day: dayjs(fmSendingTime).format('YYYY-MM-DDTHH:mm:ss'),
+                        sending_time_of_day: dayjs(fmDate).format('YYYY-MM-DDTHH:mm:ss'),
                         repeat_number: parseInt(fmRepeat, 10),
                         days_after_im_value: fmTriggerType.value === 'days_after_im_sent' ? parseInt(fmDaysAfter, 10) : undefined,
                         day_of_week_value: fmTriggerType.value === 'day_of_week' ? fmDayOfWeek.value : undefined,
                         date_of_month_value: fmTriggerType.value === 'date_of_month' ? parseInt(fmDateOfMonth, 10) : undefined,
-                        date_of_year_value: fmTriggerType.value === 'date_of_year' ? dayjs(fmDate).format('DD/MM') : undefined,
+                        date_of_year_value: fmTriggerType.value === 'date_of_year' && fmDayOfYear && fmMonthOfYear
+                            ? `${String(fmDayOfYear.value).padStart(2, '0')}/${String(fmMonthOfYear.value).padStart(2, '0')}`
+                            : undefined,
                     }
                 } else {
-                    const combinedDateTime = dayjs(fmDate).format('YYYY-MM-DDTHH:mm:ss');
+                    const year = dayjs(fmDate).year();
+                    const month = dayjs(fmDate).month();
+                    const day = dayjs(fmDate).date();
+                    
+                    const hour = dayjs(fmDate).hour();
+                    const minute = dayjs(fmDate).minute();
+
+                    const combinedDateTime = dayjs()
+                        .year(year).month(month).date(day)
+                        .hour(hour).minute(minute).second(0)
+                        .format('YYYY-MM-DDTHH:mm:ss');
+                    
                     payload.schedule = {
                         trigger_type: 'specific_date',
                         specific_date_value: combinedDateTime,
@@ -283,9 +417,17 @@ export default function UcmScheduleScreen() {
             setIsSubmitting(false);
         }
     };
+
+    const WarningText = ({ text }: { text: string | null }) => text ? <Text style={styles.warningText}>{text}</Text> : null;
     
     // --- Picker and DateTime Handlers ---
-    const openPicker = (pickerName: string, title: string, options: PickerOption[]) => { setCurrentPicker(pickerName); setPickerTitle(title); setPickerOptions(options); setPickerVisible(true); };
+    const openPicker = (pickerType: string, title: string, options: PickerOption[], style: 'list' | 'wheel' = 'list') => {
+        setCurrentPicker(pickerType);
+        setPickerTitle(title);
+        setPickerOptions(options);
+        setPickerStyle(style); // <-- Dòng mới
+        setPickerVisible(true);
+    };
     const onPickerSelect = (option: PickerOption) => {
         switch(currentPicker) {
             case 'imClcType': setImClcType(option); break;
@@ -293,16 +435,20 @@ export default function UcmScheduleScreen() {
             case 'imWctUnit': setImWctUnit(option); break;
             case 'fmTriggerType': setFmTriggerType(option); break;
             case 'fmDayOfWeek': setFmDayOfWeek(option); break;
+            case 'fmMonthOfYear': setFmMonthOfYear(option); break;
+            case 'fmDayOfYear': setFmDayOfYear(option); break;
+            case 'imMonthOfYear': setImMonthOfYear(option); break;
+            case 'imDayOfYear': setImDayOfYear(option); break;
         }
-    };
-    const onDateTimeChange = (setter: React.Dispatch<React.SetStateAction<Date>>, setShow: React.Dispatch<React.SetStateAction<boolean>>) => (event: DateTimePickerEvent, selectedDate?: Date) => {
-        setShow(Platform.OS === 'ios');
-        if (selectedDate) setter(selectedDate);
     };
 
     // --- Render Functions ---
     const renderIMFields = () => (
         <View>
+            <View style={styles.infoAlert}>
+                <Ionicons name="information-circle-outline" size={20} color={themeColors.icon} style={{ marginRight: 10 }} />
+                <Text style={styles.infoAlertText}>{t('ucm_page.schedule_form_im.info_alert')}</Text>
+            </View>
             <View style={styles.scheduleTypeSelector}>
                 <TouchableOpacity style={[styles.scheduleTypeButton, scheduleMode === 'loop' && styles.scheduleTypeButtonActive]} onPress={() => setScheduleMode('loop')}>
                     <Text style={[styles.scheduleTypeButtonText, scheduleMode === 'loop' && styles.scheduleTypeButtonTextActive]}>{t('ucm_page.schedule_form_im.label_loop')}</Text>
@@ -314,54 +460,155 @@ export default function UcmScheduleScreen() {
 
             {scheduleMode === 'loop' ? (
                 <>
-                <Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_loop_type')}</Text>
-                <TouchableOpacity style={styles.pickerButton} onPress={() => openPicker('imClcType', 'Loop Type', imClcTypeOptions)}><Text style={styles.pickerButtonText}>{imClcType.label}</Text><Ionicons name="chevron-down" size={20} color={themeColors.icon} /></TouchableOpacity>
-                {imClcType.value === 'specific_days' && <><Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_interval')}</Text><TextInput style={styles.textInput} value={imClcDaysInterval} onChangeText={setImClcDaysInterval} keyboardType="number-pad" /></>}
-                {imClcType.value === 'day_of_week' && <><Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_day')}</Text><TouchableOpacity style={styles.pickerButton} onPress={() => openPicker('imClcDayOfWeek', 'Day of Week', dayOfWeekOptions)}><Text style={styles.pickerButtonText}>{imClcDayOfWeek.label}</Text></TouchableOpacity></>}
-                {imClcType.value === 'date_of_month' && <><Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_date_of_month')}</Text><TextInput style={styles.textInput} value={imClcDateOfMonth} onChangeText={setImClcDateOfMonth} keyboardType="number-pad" /></>}
-                {imClcType.value === 'date_of_year' && <><Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_date')}</Text><TouchableOpacity style={styles.pickerButton} onPress={() => setShowImDatePicker(true)}><Text style={styles.pickerButtonText}>{dayjs(imClcDate).format('DD MMMM')}</Text></TouchableOpacity></>}
-                <Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_prompt_time')}</Text>
-                <TouchableOpacity style={styles.pickerButton} onPress={() => setShowImTimePicker(true)}><Text style={styles.pickerButtonText}>{dayjs(imClcPromptTime).format('HH:mm')}</Text></TouchableOpacity>
+                    <Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_loop_type')}</Text>
+                    <TouchableOpacity style={styles.pickerButton} onPress={() => openPicker('imClcType', t('ucm_page.schedule_form_im.label_loop_type'), imClcTypeOptions)}>
+                        <Text style={styles.pickerButtonText}>{imClcType.label}</Text>
+                        <Ionicons name="chevron-down" size={20} color={themeColors.icon} />
+                    </TouchableOpacity>
+                    
+                    {imClcType.value === 'specific_days' && <><Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_interval')}</Text><TextInput style={styles.textInput} value={imClcDaysInterval} onChangeText={setImClcDaysInterval} keyboardType="number-pad" /></>}
+                    {imClcType.value === 'day_of_week' && <><Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_day')}</Text><TouchableOpacity style={styles.pickerButton} onPress={() => openPicker('imClcDayOfWeek', t('ucm_page.schedule_form_im.label_day'), dayOfWeekOptions)}><Text style={styles.pickerButtonText}>{imClcDayOfWeek.label}</Text><Ionicons name="chevron-down" size={20} color={themeColors.icon} /></TouchableOpacity></>}
+                    {imClcType.value === 'date_of_month' && <><Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_date_of_month')}</Text><TextInput style={styles.textInput} value={imClcDateOfMonth} onChangeText={setImClcDateOfMonth} keyboardType="number-pad" /><WarningText text={imDateOfMonthWarning} /></>}
+                    {imClcType.value === 'date_of_year' && (
+                        <>
+                            <Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_date')}</Text>
+                            <View style={{ flexDirection: 'row', gap: 10 }}>
+                                <TouchableOpacity
+                                    style={[styles.pickerButton, { flex: 1 }]}
+                                    onPress={() => openPicker('imMonthOfYear', t('ucm_page.label_month'), monthOptions, 'wheel')}
+                                >
+                                    <Text style={styles.pickerButtonText}>{imMonthOfYear?.label || t('ucm_page.label_month')}</Text>
+                                    <Ionicons name="chevron-down" size={20} color={themeColors.icon} />
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[styles.pickerButton, { flex: 1 }]}
+                                    onPress={() => openPicker('imDayOfYear', t('ucm_page.label_day'), dayOptionsForIMMonth, 'wheel')}
+                                    disabled={!imMonthOfYear}
+                                >
+                                    <Text style={[styles.pickerButtonText, !imMonthOfYear && { color: themeColors.icon }]}>
+                                        {imDayOfYear?.label || t('ucm_page.label_day')}
+                                    </Text>
+                                    <Ionicons name="chevron-down" size={20} color={themeColors.icon} />
+                                </TouchableOpacity>
+                            </View>
+                            <WarningText text={imDateOfYearWarning} />
+                        </>
+                    )}
+                    <Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_prompt_time')}</Text>
+                    <TouchableOpacity style={styles.pickerButton} onPress={() => setShowImTimePicker(true)}>
+                        <Text style={styles.pickerButtonText}>{dayjs(imClcPromptTime).format('HH:mm')}</Text>
+                        <Ionicons name="time-outline" size={20} color={themeColors.icon} />
+                    </TouchableOpacity>
                 </>
             ) : (
                  <>
-                    <Text style={styles.formLabel}>{t('ucm_page.schedule_form_fm.label_specific_date')}</Text>
-                    <TouchableOpacity style={styles.pickerButton} onPress={() => setShowImDatePicker(true)}><Text style={styles.pickerButtonText}>{dayjs(imClcDate).format('DD MMMM, YYYY HH:mm')}</Text></TouchableOpacity>
+                    <Text style={styles.formLabel}>{t('scm_page.schedule_form.label_date')}</Text>
+                    <TouchableOpacity style={styles.pickerButton} onPress={() => setShowImDatePicker(true)}>
+                        <Text style={styles.pickerButtonText}>{dayjs(imClcDate).format(userDayjsFormat)}</Text>
+                        <Ionicons name="calendar-outline" size={20} color={themeColors.icon} />
+                    </TouchableOpacity>
+
+                    <Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_prompt_time')}</Text>
+                    <TouchableOpacity style={styles.pickerButton} onPress={() => setShowImTimePickerOneTime(true)}>
+                        <Text style={styles.pickerButtonText}>{dayjs(imClcDate).format('HH:mm')}</Text>
+                        <Ionicons name="time-outline" size={20} color={themeColors.icon} />
+                    </TouchableOpacity>
                 </>
             )}
             <View style={styles.dividerLine} />
             <Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_wct')}</Text>
             <View style={{flexDirection: 'row', gap: 10}}>
                 <TextInput style={[styles.textInput, {flex: 1}]} value={imWctValue} onChangeText={setImWctValue} keyboardType="number-pad" />
-                <TouchableOpacity style={[styles.pickerButton, {flex: 1, marginBottom: 15}]} onPress={() => openPicker('imWctUnit', 'WCT Unit', wctUnitOptions)}><Text style={styles.pickerButtonText}>{imWctUnit.label}</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.pickerButton, {flex: 1}]} onPress={() => openPicker('imWctUnit', t('ucm_page.schedule_form_im.label_wct'), wctUnitOptions)}>
+                    <Text style={styles.pickerButtonText}>{imWctUnit.label}</Text>
+                    <Ionicons name="chevron-down" size={20} color={themeColors.icon} />
+                </TouchableOpacity>
             </View>
+            <Text style={styles.noteText}>{t('ucm_page.schedule_form_im.note_wct')}</Text>
         </View>
     );
 
     const renderFMFields = () => (
          <View>
             <View style={styles.scheduleTypeSelector}>
-                <TouchableOpacity style={[styles.scheduleTypeButton, scheduleMode === 'loop' && styles.scheduleTypeButtonActive]} onPress={() => setScheduleMode('loop')}><Text style={[styles.scheduleTypeButtonText, scheduleMode === 'loop' && styles.scheduleTypeButtonTextActive]}>{t('ucm_page.schedule_form_im.label_loop')}</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.scheduleTypeButton, scheduleMode === 'unloop' && styles.scheduleTypeButtonActive]} onPress={() => setScheduleMode('unloop')}><Text style={[styles.scheduleTypeButtonText, scheduleMode === 'unloop' && styles.scheduleTypeButtonTextActive]}>{t('ucm_page.schedule_form_im.label_onetime')}</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.scheduleTypeButton, scheduleMode === 'loop' && styles.scheduleTypeButtonActive]} onPress={() => setScheduleMode('loop')}>
+                    <Text style={[styles.scheduleTypeButtonText, scheduleMode === 'loop' && styles.scheduleTypeButtonTextActive]}>{t('ucm_page.schedule_form_im.label_loop')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.scheduleTypeButton, scheduleMode === 'unloop' && styles.scheduleTypeButtonActive]} onPress={() => setScheduleMode('unloop')}>
+                    <Text style={[styles.scheduleTypeButtonText, scheduleMode === 'unloop' && styles.scheduleTypeButtonTextActive]}>{t('ucm_page.schedule_form_im.label_onetime')}</Text>
+                </TouchableOpacity>
             </View>
 
             {scheduleMode === 'loop' ? (
                 <>
-                <Text style={styles.formLabel}>{t('ucm_page.schedule_form_fm.label_trigger_type')}</Text>
-                <TouchableOpacity style={styles.pickerButton} onPress={() => openPicker('fmTriggerType', 'Trigger Type', fmTriggerTypeOptions)}><Text style={styles.pickerButtonText}>{fmTriggerType.label}</Text><Ionicons name="chevron-down" size={20} color={themeColors.icon} /></TouchableOpacity>
-                {fmTriggerType.value === 'days_after_im_sent' && <><Text style={styles.formLabel}>{t('ucm_page.schedule_form_fm.label_days_after')}</Text><TextInput style={styles.textInput} value={fmDaysAfter} onChangeText={setFmDaysAfter} keyboardType="number-pad" /></>}
-                {fmTriggerType.value === 'day_of_week' && <><Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_day')}</Text><TouchableOpacity style={styles.pickerButton} onPress={() => openPicker('fmDayOfWeek', 'Day of Week', dayOfWeekOptions)}><Text style={styles.pickerButtonText}>{fmDayOfWeek.label}</Text></TouchableOpacity></>}
-                {fmTriggerType.value === 'date_of_month' && <><Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_date_of_month')}</Text><TextInput style={styles.textInput} value={fmDateOfMonth} onChangeText={setFmDateOfMonth} keyboardType="number-pad" /></>}
-                {fmTriggerType.value === 'date_of_year' && <><Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_date')}</Text><TouchableOpacity style={styles.pickerButton} onPress={() => setShowFmDatePicker(true)}><Text style={styles.pickerButtonText}>{dayjs(fmDate).format('DD MMMM')}</Text></TouchableOpacity></>}
-                <Text style={styles.formLabel}>{t('ucm_page.schedule_form_fm.label_sending_time')}</Text>
-                <TouchableOpacity style={styles.pickerButton} onPress={() => setShowFmTimePicker(true)}><Text style={styles.pickerButtonText}>{dayjs(fmSendingTime).format('HH:mm')}</Text></TouchableOpacity>
-                <Text style={styles.formLabel}>{t('ucm_page.schedule_form_fm.label_repetitions')}</Text>
-                <TextInput style={styles.textInput} value={fmRepeat} onChangeText={setFmRepeat} keyboardType="number-pad" />
+                    <Text style={styles.formLabel}>{t('ucm_page.schedule_form_fm.label_trigger_type')}</Text>
+                    <TouchableOpacity style={styles.pickerButton} onPress={() => openPicker('fmTriggerType', t('ucm_page.schedule_form_fm.label_trigger_type'), fmTriggerTypeOptions)}>
+                        <Text style={styles.pickerButtonText}>{fmTriggerType.label}</Text>
+                        <Ionicons name="chevron-down" size={20} color={themeColors.icon} />
+                    </TouchableOpacity>
+
+                    {fmTriggerType.value === 'days_after_im_sent' && <><Text style={styles.formLabel}>{t('ucm_page.schedule_form_fm.label_days_after')}</Text><TextInput style={styles.textInput} value={fmDaysAfter} onChangeText={setFmDaysAfter} keyboardType="number-pad" /></>}
+                    {fmTriggerType.value === 'day_of_week' && <><Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_day')}</Text><TouchableOpacity style={styles.pickerButton} onPress={() => openPicker('fmDayOfWeek', t('ucm_page.schedule_form_im.label_day'), dayOfWeekOptions)}><Text style={styles.pickerButtonText}>{fmDayOfWeek.label}</Text><Ionicons name="chevron-down" size={20} color={themeColors.icon} /></TouchableOpacity></>}
+                    {fmTriggerType.value === 'date_of_month' && <><Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_date_of_month')}</Text><TextInput style={styles.textInput} value={fmDateOfMonth} onChangeText={setFmDateOfMonth} keyboardType="number-pad" /><WarningText text={fmDateOfMonthWarning} /></>}
+                    {fmTriggerType.value === 'date_of_year' && (
+                        <>
+                            <Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_date')}</Text>
+                            <View style={{ flexDirection: 'row', gap: 10 }}>
+
+                                <TouchableOpacity
+                                    style={[styles.pickerButton, { flex: 1 }]}
+                                    onPress={() => openPicker('fmMonthOfYear', t('ucm_page.label_month'), monthOptions, 'wheel')}
+                                >
+                                    <Text style={styles.pickerButtonText}>{fmMonthOfYear?.label || t('ucm_page.label_month')}</Text>
+                                    <Ionicons name="chevron-down" size={20} color={themeColors.icon} />
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[styles.pickerButton, { flex: 1 }]}
+                                    onPress={() => openPicker('fmDayOfYear', t('ucm_page.label_day'), dayOptionsForMonth, 'wheel')}
+                                    disabled={!fmMonthOfYear}
+                                >
+                                    <Text style={[styles.pickerButtonText, !fmMonthOfYear && { color: themeColors.icon }]}>
+                                        {fmDayOfYear?.label || t('ucm_page.label_day')}
+                                    </Text>
+                                    <Ionicons name="chevron-down" size={20} color={themeColors.icon} />
+                                </TouchableOpacity>
+
+                            </View>
+                            <WarningText text={fmDateOfYearWarning} />
+                        </>
+                    )}
+                    
+                    <Text style={styles.formLabel}>{t('ucm_page.schedule_form_fm.label_sending_time')}</Text>
+                    
+                    <TouchableOpacity style={styles.pickerButton} onPress={() => setShowFmTimePicker(true)}>
+                        <Text style={styles.pickerButtonText}>{dayjs(fmDate).format('HH:mm')}</Text>
+                        <Ionicons name="time-outline" size={20} color={themeColors.icon} />
+                    </TouchableOpacity>
+                    
+                    <Text style={styles.formLabel}>{t('ucm_page.schedule_form_fm.label_repetitions')}</Text>
+                    <TextInput 
+                        style={[styles.textInput, isRepeatDisabled && { backgroundColor: themeColors.inputBorder, color: themeColors.icon }]} 
+                        value={fmRepeat} 
+                        onChangeText={setFmRepeat} 
+                        keyboardType="number-pad"
+                        editable={!isRepeatDisabled}
+                    />
                 </>
             ) : (
                 <>
-                <Text style={styles.formLabel}>{t('ucm_page.schedule_form_fm.label_specific_date')}</Text>
-                <TouchableOpacity style={styles.pickerButton} onPress={() => setShowFmDatePicker(true)}><Text style={styles.pickerButtonText}>{dayjs(fmDate).format('DD MMMM, YYYY HH:mm')}</Text></TouchableOpacity>
+                    <Text style={styles.formLabel}>{t('scm_page.schedule_form.label_date')}</Text>
+                    <TouchableOpacity style={styles.pickerButton} onPress={() => setShowFmDatePicker(true)}>
+                        <Text style={styles.pickerButtonText}>{dayjs(fmDate).format(userDayjsFormat)}</Text>
+                        <Ionicons name="calendar-outline" size={20} color={themeColors.icon} />
+                    </TouchableOpacity>
+
+                    <Text style={styles.formLabel}>{t('ucm_page.schedule_form_fm.label_sending_time')}</Text>
+                    <TouchableOpacity style={styles.pickerButton} onPress={() => setShowFmTimePickerOneTime(true)}>
+                        <Text style={styles.pickerButtonText}>{dayjs(fmDate).format('HH:mm')}</Text>
+                        <Ionicons name="time-outline" size={20} color={themeColors.icon} />
+                    </TouchableOpacity>
                 </>
             )}
         </View>
@@ -392,11 +639,99 @@ export default function UcmScheduleScreen() {
             <View style={styles.dividerContainer}><View style={styles.dividerLine} /><Text style={styles.dividerText}>Scheduling</Text><View style={styles.dividerLine} /></View>
             <View style={styles.schedulingContainer}>{params.messageType === 'IM' ? renderIMFields() : renderFMFields()}</View>
         </ScrollView>
-        {showImDatePicker && <DateTimePicker value={imClcDate} mode="datetime" display="default" onChange={onDateTimeChange(setImClcDate, setShowImDatePicker)} />}
-        {showImTimePicker && <DateTimePicker value={imClcPromptTime} mode="time" display="default" onChange={onDateTimeChange(setImClcPromptTime, setShowImTimePicker)} />}
-        {showFmDatePicker && <DateTimePicker value={fmDate} mode="datetime" display="default" onChange={onDateTimeChange(setFmDate, setShowFmDatePicker)} />}
-        {showFmTimePicker && <DateTimePicker value={fmSendingTime} mode="time" display="default" onChange={onDateTimeChange(setFmSendingTime, setShowFmTimePicker)} />}
-        <CustomPickerModal isVisible={pickerVisible} options={pickerOptions} title={pickerTitle} onClose={() => setPickerVisible(false)} onSelect={onPickerSelect} />
+        <SafeDateTimePicker
+            isVisible={showImDatePicker}
+            value={imClcDate}
+            mode="date"
+            onClose={() => setShowImDatePicker(false)}
+            onSelect={(date) => {
+                const newDate = new Date(imClcDate);
+                newDate.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+                setImClcDate(newDate);
+            }}
+            timeZoneName={timezone}
+        />
+        <SafeDateTimePicker
+            isVisible={showImTimePickerOneTime}
+            value={imClcDate}
+            mode="time"
+            onClose={() => setShowImTimePickerOneTime(false)}
+            onSelect={(date) => {
+                const newDate = new Date(imClcDate);
+                newDate.setHours(date.getHours(), date.getMinutes());
+                setImClcDate(newDate);
+            }}
+            timeZoneName={timezone}
+        />
+        <SafeDateTimePicker
+          isVisible={showImTimePicker}
+          value={imClcPromptTime}
+          mode="time"
+          onClose={() => setShowImTimePicker(false)}
+          onSelect={setImClcPromptTime}
+          timeZoneName={timezone}
+        />
+        <SafeDateTimePicker
+          isVisible={showFmDatePicker}
+          value={fmDate}
+          mode="date"
+          onClose={() => setShowFmDatePicker(false)}
+            onSelect={(date) => {
+                const newDate = new Date(fmDate);
+                newDate.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+                setFmDate(newDate);
+            }}
+          timeZoneName={timezone}
+        />
+        <SafeDateTimePicker
+            isVisible={showFmTimePicker}
+            value={fmDate}
+            mode="time"
+            onClose={() => setShowFmTimePicker(false)}
+            onSelect={(date) => {
+                const newDate = new Date(fmDate);
+                newDate.setHours(date.getHours(), date.getMinutes());
+                setFmDate(newDate);
+            }}
+            timeZoneName={timezone}
+        />
+        <SafeDateTimePicker
+            isVisible={showFmTimePickerOneTime}
+            value={fmDate}
+            mode="time"
+            onClose={() => setShowFmTimePickerOneTime(false)}
+            onSelect={(date) => {
+                const newDate = new Date(fmDate);
+                newDate.setHours(date.getHours(), date.getMinutes());
+                setFmDate(newDate);
+    }}
+            timeZoneName={timezone}
+        />
+        {pickerStyle === 'list' && (
+            <CustomPickerModal
+                isVisible={pickerVisible}
+                options={pickerOptions}
+                title={pickerTitle}
+                onClose={() => setPickerVisible(false)}
+                onSelect={onPickerSelect}
+            />
+        )}
+        {pickerStyle === 'wheel' && (
+            <WheelPickerModal
+                isVisible={pickerVisible}
+                options={pickerOptions}
+                title={pickerTitle}
+                initialValue={
+                    currentPicker === 'fmMonthOfYear' ? fmMonthOfYear :
+                    currentPicker === 'fmDayOfYear' ? fmDayOfYear :
+                    currentPicker === 'imMonthOfYear' ? imMonthOfYear :
+                    currentPicker === 'imDayOfYear' ? imDayOfYear :
+                    null
+                }
+                onClose={() => setPickerVisible(false)}
+                onSelect={onPickerSelect}
+            />
+        )}
     </SafeAreaView>
   );
 }
@@ -424,4 +759,33 @@ const createStyles = (themeColors: any) => StyleSheet.create({
     pickerButton: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: themeColors.card, borderWidth: 1, borderColor: themeColors.inputBorder, borderRadius: 8, paddingHorizontal: 15, paddingVertical: 12, marginBottom: 15, },
     pickerButtonText: { color: themeColors.text, fontSize: 16, },
     textInput: { backgroundColor: themeColors.card, borderWidth: 1, borderColor: themeColors.inputBorder, borderRadius: 8, paddingHorizontal: 15, paddingVertical: Platform.OS === 'ios' ? 12 : 8, marginBottom: 15, color: themeColors.text, fontSize: 16, },
+    warningText: {
+        color: themeColors.tint,
+        fontSize: 12,
+        marginTop: -10,
+        marginBottom: 15,
+    },
+    infoAlert: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: themeColors.card,
+        borderRadius: 8,
+        padding: 15,
+        marginBottom: 20,
+        borderLeftWidth: 4,
+        borderLeftColor: themeColors.tint,
+    },
+    infoAlertText: {
+        flex: 1,
+        color: themeColors.text,
+        fontSize: 13,
+        lineHeight: 18,
+    },
+    noteText: {
+        color: themeColors.icon,
+        fontSize: 12,
+        marginTop: -10,
+        marginBottom: 15,
+    },
+    
 });

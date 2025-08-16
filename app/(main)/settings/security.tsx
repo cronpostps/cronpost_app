@@ -18,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import api from '../../../src/api/api';
 import PinModal from '../../../src/components/PinModal';
 import { Colors } from '../../../src/constants/Colors';
@@ -51,25 +52,31 @@ export default function SecuritySettingsScreen() {
       setIsLoading(false);
     };
     loadSettings();
-  }, [user]);
+  }, [user, BIOMETRICS_KEY]);
 
-  const handleBiometricsToggle = async (value: boolean) => {
+const handleBiometricsToggle = async (value: boolean) => {
     if (!user?.has_pin) {
-        Alert.alert(t('errors.generic', {message: ''}), t('security_page.pin_required_for_bio'));
+        Toast.show({ type: 'error', text1: t('errors.title_error'), text2: t('security_page.pin_required_for_bio')});
         return;
     }
     if (value) {
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      if (!hasHardware) { Alert.alert(t('security_page.biometrics_error_title'), t('security_page.error_no_hardware')); return; }
-      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-      if (!isEnrolled) { Alert.alert(t('security_page.biometrics_error_title'), t('security_page.error_not_enrolled')); return; }
-      setPinModalAction('enable_bio');
-      setPinModalVisible(true);
+        const hasHardware = await LocalAuthentication.hasHardwareAsync();
+        if (!hasHardware) { 
+            Toast.show({ type: 'error', text1: t('security_page.biometrics_error_title'), text2: t('security_page.error_no_hardware') }); 
+            return; 
+        }
+        const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+        if (!isEnrolled) { 
+            Toast.show({ type: 'error', text1: t('security_page.biometrics_error_title'), text2: t('security_page.error_not_enrolled') }); 
+            return; 
+        }
+        setPinModalAction('enable_bio');
+        setPinModalVisible(true);
     } else {
-      await SecureStore.deleteItemAsync(BIOMETRICS_KEY);
-      setIsBiometricsEnabled(false);
+        await SecureStore.deleteItemAsync(BIOMETRICS_KEY);
+        setIsBiometricsEnabled(false);
     }
-  };
+};
 
   const handleRemovePin = () => {
     Alert.alert(
@@ -92,35 +99,35 @@ export default function SecuritySettingsScreen() {
   };
 
   const handlePinSubmit = async (pin: string) => {
-    setPinModalVisible(false);
-    const currentAction = pinModalAction;
-    setPinModalAction(null);
+      setPinModalVisible(false);
+      const currentAction = pinModalAction;
+      setPinModalAction(null);
 
-    try {
-        if (currentAction === 'enable_bio') {
-            await api.post('/api/users/verify-pin-session', { pin_code: pin });
-            await SecureStore.setItemAsync(BIOMETRICS_KEY, 'true');
-            setIsBiometricsEnabled(true);
-            Alert.alert(t('security_page.biometrics_success_title'), t('security_page.success_biometrics_enabled'));
-        } else if (currentAction === 'remove_pin') {
-            await api.delete('/api/users/pin', { data: { pin_code: pin } });
-            await SecureStore.deleteItemAsync(BIOMETRICS_KEY);
-            setIsBiometricsEnabled(false);
-            await refreshUser();
-            Alert.alert(t('security_page.biometrics_success_title'), t('security_page.success_pin_removed'));
-        } else if (currentAction === 'save_options') {
-            await api.put('/api/users/security-options', { 
-                use_pin_for_all_actions: pendingOptionsValue,
-                pin_code: pin 
-            });
-            await refreshUser();
-            Alert.alert(t('security_page.biometrics_success_title'), t('security_page.success_options_saved'));
-        }
-    } catch (error) {
-        Alert.alert(t('errors.generic', {message: ''}), translateApiError(error));
-    } finally {
-        setPendingOptionsValue(null);
-    }
+      try {
+          if (currentAction === 'enable_bio') {
+              await api.post('/api/users/verify-pin-session', { pin_code: pin });
+              await SecureStore.setItemAsync(BIOMETRICS_KEY, 'true');
+              setIsBiometricsEnabled(true);
+              Toast.show({ type: 'success', text1: t('security_page.success_biometrics_enabled') });
+          } else if (currentAction === 'remove_pin') {
+              await api.delete('/api/users/pin', { data: { pin_code: pin } });
+              await SecureStore.deleteItemAsync(BIOMETRICS_KEY);
+              setIsBiometricsEnabled(false);
+              await refreshUser();
+              Toast.show({ type: 'success', text1: t('security_page.success_pin_removed') });
+          } else if (currentAction === 'save_options') {
+              await api.put('/api/users/security-options', { 
+                  use_pin_for_all_actions: pendingOptionsValue,
+                  pin_code: pin 
+              });
+              await refreshUser();
+              Toast.show({ type: 'success', text1: t('security_page.success_options_saved') });
+          }
+      } catch (error) {
+          Toast.show({ type: 'error', text1: t('errors.title_error'), text2: translateApiError(error) });
+      } finally {
+          setPendingOptionsValue(null);
+      }
   };
   
   const styles = StyleSheet.create({

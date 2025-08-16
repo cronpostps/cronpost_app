@@ -70,7 +70,7 @@ export default function NotificationsSettingsScreen() {
       fontSize: 16,
       color: themeColors.text,
     },
-    // Thêm style cho spinner
+    itemDescription: { fontSize: 12, color: themeColors.icon, marginTop: 2 },
     activityIndicator: {
       transform: [{ scale: 0.8 }],
     },
@@ -92,6 +92,7 @@ export default function NotificationsSettingsScreen() {
           />
         )}
       </View>
+      <Text style={styles.itemDescription}>{t('settings_page.enable_push_notifications_desc')}</Text>
     </View>
   );
 }

@@ -1,5 +1,5 @@
 // app/(main)/settings/_layout.tsx
-// Version 1.2.0 (Added PIN management screens)
+// Version 1.2.0
 
 import { Stack } from 'expo-router';
 import React from 'react';
@@ -18,9 +18,9 @@ export default function SettingsStackLayout() {
         headerStyle: { backgroundColor: themeColors.background },
         headerTintColor: themeColors.text,
         headerTitleStyle: { fontWeight: 'bold' },
-        headerBackTitleVisible: false,
+        headerBackVisible: true,
       }}>
-      <Stack.Screen name="index" options={{ title: t('settings_page.title') }} />
+      <Stack.Screen name="index" options={{ title: t('settings_page.title'), headerShown: false }} />
       <Stack.Screen name="security" options={{ title: t('security_page.title') }} />
       <Stack.Screen name="profile" options={{ title: t('profile_page.title') }} />
       <Stack.Screen name="sendingHistory" options={{ title: t('history_page.title') }} />

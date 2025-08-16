@@ -1,20 +1,21 @@
 // app/(main)/settings/changePassword.tsx
+// Version: 1.1.0 (Replaced Alerts with Toasts)
 
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import Toast from 'react-native-toast-message'; // FIX: Thêm import Toast
 import api from '../../../src/api/api';
 import { Colors } from '../../../src/constants/Colors';
 import { useTheme } from '../../../src/store/ThemeContext';
@@ -33,12 +34,21 @@ export default function ChangePasswordScreen() {
   const [isSaving, setIsSaving] = useState(false);
 
   const handleUpdate = async () => {
+    // FIX: Thay thế Alert bằng Toast cho các lỗi validation
     if (newPassword.length < 6 || newPassword.length > 20) {
-      Alert.alert(t('errors.generic', {message: ''}), t('change_password_page.password_note'));
+      Toast.show({
+        type: 'error',
+        text1: t('errors.title_error'),
+        text2: t('change_password_page.password_note'),
+      });
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert(t('errors.generic', {message: ''}), t('change_password_page.error_mismatch'));
+      Toast.show({
+        type: 'error',
+        text1: t('errors.title_error'),
+        text2: t('change_password_page.error_mismatch'),
+      });
       return;
     }
     
@@ -48,10 +58,19 @@ export default function ChangePasswordScreen() {
         current_password: currentPassword,
         new_password: newPassword,
       });
-      Alert.alert(t('security_page.biometrics_success_title'), t('change_password_page.success_message'));
-      router.back();
+      // FIX: Thay thế Alert bằng Toast và dùng onHide để quay về
+      Toast.show({
+        type: 'success',
+        text1: t('change_password_page.success_message'),
+        onHide: () => router.back(),
+      });
     } catch (error) {
-      Alert.alert(t('errors.generic', {message: ''}), translateApiError(error));
+      // FIX: Thay thế Alert bằng Toast cho lỗi từ API
+      Toast.show({
+        type: 'error',
+        text1: t('errors.title_error'),
+        text2: translateApiError(error),
+      });
     } finally {
       setIsSaving(false);
     }

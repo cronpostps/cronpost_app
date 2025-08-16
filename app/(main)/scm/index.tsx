@@ -74,45 +74,45 @@ interface ScmStats {
 
 // --- Helper Functions ---
 
-const formatScheduleText = (item: Scm, t: TFunction): string => {
-  const reps = `(${item.current_repetition}/${item.repeat_number} reps)`;
+const formatScheduleText = (item: Scm, t: TFunction, dateFormat: string): string => {
+  const repsInfo = `(${item.current_repetition}/${item.repeat_number})`;
+
   if (item.status === 'inactive') return t('scm_page.schedule_not_scheduled');
-  
+
   if (item.schedule_type === 'unloop') {
     if (!item.unloop_send_at) return t('scm_page.schedule_not_scheduled');
-    return `${t('scm_page.label_onetime')}: ${dayjs(item.unloop_send_at).format('HH:mm DD/MM/YYYY')}`;
+    // Sử dụng dateFormat được truyền vào
+    return `${t('scm_page.label_onetime')}: ${dayjs(item.unloop_send_at).format(dateFormat)}`;
   }
 
   if (item.schedule_type === 'loop') {
-    const time = item.loop_sending_time ? `at ${item.loop_sending_time}` : '';
+    const time = item.loop_sending_time ? item.loop_sending_time.slice(0, 5) : '';
     switch (item.loop_type) {
       case 'minutes':
-        return `${t('scm_page.schedule_loop_minutes', { mins: item.loop_interval_minutes })} ${reps}`;
+        return t('scm_page.schedule_loop_minutes', { mins: item.loop_interval_minutes, reps: repsInfo });
       case 'days':
-        return `${t('scm_page.schedule_loop_days', { count: item.loop_interval_days, time })} ${reps}`;
+        return t('scm_page.schedule_loop_days', { count: item.loop_interval_days, time, reps: repsInfo });
       case 'day_of_week':
         const day = t(`ucm_page.day_${item.loop_day_of_week?.toLowerCase()}`);
-        return `${t('scm_page.schedule_loop_day_of_week', { day, time })} ${reps}`;
+        return t('scm_page.schedule_loop_day_of_week', { day, time, reps: repsInfo });
       case 'date_of_month':
-        return `${t('scm_page.schedule_loop_date_of_month', { date: item.loop_date_of_month, time })} ${reps}`;
+        return t('scm_page.schedule_loop_date_of_month', { date: item.loop_date_of_month, time, reps: repsInfo });
       case 'date_of_year':
         const [month, date] = item.loop_date_of_year?.split('-') || ['', ''];
-        const monthKey = dayjs().month(parseInt(month, 10) - 1).format('MMM').toLowerCase();
-        const monthName = t(`ucm_page.month_${monthKey}`);
-        return `${t('scm_page.schedule_loop_date_of_year', { day: date, month: monthName, time })} ${reps}`;
-      default:
-        return t('scm_page.schedule_not_scheduled');
+        const monthName = t(`ucm_page.schedule.month_keys.${parseInt(month, 10)}`);
+        return t('scm_page.schedule_loop_date_of_year', { day: date, month: monthName, time, reps: repsInfo });
       case 'date_of_lunar_year': {
         const [lunar_month, lunar_day] = item.loop_date_of_year?.split('-') || ['', ''];
         const leapIndicator = item.loop_is_leap_month ? ` ${t('scm_page.leap_month_indicator')}` : '';
         const dateString = `${lunar_day.padStart(2, '0')}/${lunar_month.padStart(2, '0')}${leapIndicator}`;
-        return `${t('scm_page.schedule_loop_date_of_lunar_year', { date: dateString, time })} ${reps}`;
-      }        
+        return t('scm_page.schedule_loop_date_of_lunar_year', { date: dateString, time, reps: repsInfo });
+      }
+      default:
+        return t('scm_page.schedule_not_scheduled');       
     }
   }
   return t('scm_page.schedule_not_scheduled');
 };
-
 const CountdownTimer = ({ nextSendAt, style }: { nextSendAt: string; style: any }) => {
   const { t } = useTranslation();
   // Quản lý 2 trạng thái thời gian: tương đối và chính xác
@@ -142,7 +142,7 @@ const CountdownTimer = ({ nextSendAt, style }: { nextSendAt: string; style: any 
       const distance = dayjs(nextSendAt).diff(dayjs());
 
       if (distance < 0) {
-        setRelativeTime('Processing...');
+        setRelativeTime('scm_page.status_processing');
         setPreciseTime('');
         clearInterval(interval);
       } else {
@@ -326,7 +326,7 @@ export default function ScmScreen() {
     if (smtpConfig) {
       methods.push({
         key: 'user_email',
-        label: 'SMTP',
+        label: t('scm_page.method_smtp'),
         email: smtpConfig.smtp_sender_email,
       });
     }
@@ -444,7 +444,7 @@ export default function ScmScreen() {
         {/* --- CÁC PHẦN CÒN LẠI GIỮ NGUYÊN --- */}
         <View style={styles.scheduleContainer}>
             <Ionicons name="time-outline" size={16} color={styles.scheduleText.color} />
-            <Text style={styles.scheduleText}>{formatScheduleText(item, t)}</Text>
+            <Text style={styles.scheduleText}>{formatScheduleText(item, t, userDateFormat)}</Text>
         </View>
         {item.status === 'active' && item.next_send_at && <CountdownTimer nextSendAt={item.next_send_at} style={styles.countdownText} />}
         <View style={styles.footerContainer}>

@@ -1,8 +1,8 @@
 // app/(main)/settings/smtp.tsx
-// Version: 1.1.1
+// Version: 1.3.0 (Type and Hook Fixes)
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -18,21 +18,31 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import api from '../../../src/api/api';
 import { Colors } from '../../../src/constants/Colors';
 import { useAuth } from '../../../src/store/AuthContext';
 import { useTheme } from '../../../src/store/ThemeContext';
 import { translateApiError } from '../../../src/utils/errorTranslator';
 
+// FIX: Định nghĩa kiểu dữ liệu cho cài đặt SMTP
+interface SmtpSettings {
+  smtp_server: string;
+  smtp_port: number;
+  smtp_sender_email: string;
+  is_active: boolean;
+}
+
 const SmtpScreen = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { user } = useAuth(); // Get user from context, remove setUser
+  const { user } = useAuth();
   const themeColors = Colors[theme];
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [smtpSettings, setSmtpSettings] = useState(null);
+  // FIX: Cung cấp kiểu dữ liệu cho state
+  const [smtpSettings, setSmtpSettings] = useState<SmtpSettings | null>(null);
   const [formState, setFormState] = useState({
     server: '',
     port: '587',
@@ -41,16 +51,14 @@ const SmtpScreen = () => {
   });
   const [disableSignature, setDisableSignature] = useState(false);
   const [isPortModalVisible, setPortModalVisible] = useState(false);
-  
-  // Local state to hold the most current user data for this screen
   const [screenUser, setScreenUser] = useState(user);
   const isPremium = screenUser?.membership_type === 'premium';
 
-  const fetchInitialData = async () => {
+  // FIX: Bọc hàm trong useCallback để ổn định nó
+  const fetchInitialData = useCallback(async () => {
     setIsLoading(true);
     try {
       const timestamp = Date.now();
-      
       const [userResponse, smtpResponse] = await Promise.all([
         api.get(`/api/users/me?_t=${timestamp}`),
         api.get(`/api/users/smtp-settings?_t=${timestamp}`).catch(err => err.response)
@@ -72,17 +80,17 @@ const SmtpScreen = () => {
          setFormState({ server: '', port: '587', email: '', password: '' });
          setDisableSignature(false);
       }
-
     } catch (error) {
-      Alert.alert('Error', translateApiError(error));
+      Toast.show({ type: 'error', text1: t('errors.title_error'), text2: translateApiError(error) });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t]);
 
+  // FIX: Thêm dependency cho useEffect
   useEffect(() => {
     fetchInitialData();
-  }, []);
+  }, [fetchInitialData]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -94,10 +102,10 @@ const SmtpScreen = () => {
         smtp_password: formState.password,
       };
       await api.put('/api/users/smtp-settings', payload);
-      Alert.alert(t('settings_page.success_smtp_saved'));
+      Toast.show({ type: 'success', text1: t('settings_page.success_smtp_saved') });
       await fetchInitialData();
     } catch (error) {
-      Alert.alert('Error', translateApiError(error));
+      Toast.show({ type: 'error', text1: t('errors.title_error'), text2: translateApiError(error) });
     } finally {
       setIsSaving(false);
     }
@@ -112,11 +120,11 @@ const SmtpScreen = () => {
         { text: t('settings_page.btn_confirm'), style: 'destructive', onPress: async () => {
             try {
               await api.delete('/api/users/smtp-settings');
-              Alert.alert(t('settings_page.success_smtp_removed'));
+              Toast.show({ type: 'success', text1: t('settings_page.success_smtp_removed') });
               setSmtpSettings(null);
               setFormState({ server: '', port: '587', email: '', password: '' });
             } catch (error) {
-              Alert.alert('Error', translateApiError(error));
+              Toast.show({ type: 'error', text1: t('errors.title_error'), text2: translateApiError(error) });
             }
         }},
       ]
@@ -124,28 +132,27 @@ const SmtpScreen = () => {
   };
 
   const handleToggleSignature = async (value: boolean) => {
-    // 2. Kiểm tra và thông báo cho người dùng Free
     if (!isPremium) {
-      Alert.alert(
-        t('header.modal_upgrade_title'), 
-        t('errors.ERR_AUTH_PREMIUM_REQUIRED_SIGNATURE')
-      );
-      return; // Dừng thực thi, switch sẽ không thay đổi
+      Toast.show({
+        type: 'error',
+        text1: t('header.modal_upgrade_title'),
+        text2: t('errors.ERR_AUTH_PREMIUM_REQUIRED_SIGNATURE'),
+      });
+      return;
     }
 
     const originalValue = disableSignature;
-    setDisableSignature(value); // Cập nhật giao diện trước (Optimistic UI)
+    setDisableSignature(value);
 
     try {
         await api.put('/api/users/smtp-settings/signature', { append_signature: !value });
-        // 1. Hiển thị thông báo thành công cho người dùng Premium
-        Alert.alert(
-            t('security_page.biometrics_success_title'), 
-            t('settings_page.success_smtp_signature_updated')
-        );
+        Toast.show({
+            type: 'success',
+            text1: t('settings_page.success_smtp_signature_updated')
+        });
     } catch (error) {
-        Alert.alert('Error', translateApiError(error));
-        setDisableSignature(originalValue); // Hoàn tác lại thay đổi trên UI nếu có lỗi
+        Toast.show({ type: 'error', text1: t('errors.title_error'), text2: translateApiError(error) });
+        setDisableSignature(originalValue);
     }
   }
   const getStatusInfo = () => {

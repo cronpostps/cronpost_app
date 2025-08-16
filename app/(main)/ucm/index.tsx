@@ -1,12 +1,10 @@
 // app/(main)/ucm/index.tsx
-// Version: 4.0.6
+// Version: 4.0.8
 
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import * as LocalAuthentication from 'expo-local-authentication';
-import { useFocusEffect, useRouter } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { TFunction } from 'i18next';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -106,7 +104,7 @@ interface FullUCMState {
 }
 
 // --- Helper Components & Functions ---
-const CountdownTimer = ({ ucmState, themeColors }: { ucmState: UCMState, themeColors: any }) => {
+const CountdownTimer = ({ ucmState, themeColors, onTimerEnd }: { ucmState: UCMState, themeColors: any, onTimerEnd: () => void }) => {
     const { t } = useTranslation();
     const [timeLeft, setTimeLeft] = useState('');
 
@@ -119,25 +117,27 @@ const CountdownTimer = ({ ucmState, themeColors }: { ucmState: UCMState, themeCo
         const interval = setInterval(() => {
             const distance = dayjs(ucmState.countdownUntil).diff(dayjs());
             if (distance < 0) {
-                setTimeLeft('Processing...');
+                setTimeLeft(t('ucm_page.status_processing'));
                 clearInterval(interval);
-            } else {
-                const d = Math.floor(distance / (1000 * 60 * 60 * 24));
-                const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                const s = Math.floor((distance % (1000 * 60)) / 1000);
-                
-                const parts = [];
-                if (d > 0) parts.push(`${d}d`);
-                parts.push(String(h).padStart(2, '0'));
-                parts.push(String(m).padStart(2, '0'));
-                parts.push(String(s).padStart(2, '0'));
-                setTimeLeft(parts.join(':'));
+                onTimerEnd();
+                return;
             }
+            const d = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((distance % (1000 * 60)) / 1000);
+            
+            const parts = [];
+            if (d > 0) parts.push(`${d}d`);
+            if (d > 0 || h > 0) parts.push(String(h).padStart(2, '0'));
+            parts.push(String(m).padStart(2, '0'));
+            parts.push(String(s).padStart(2, '0'));
+            setTimeLeft(parts.join(':'));
+
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [ucmState.countdownUntil, t]);
+    }, [ucmState.countdownUntil, t, onTimerEnd]);
 
     let label = '';
     if (ucmState.status === 'ANS_CLC') label = t('ucm_page.im_section.countdown_clc');
@@ -146,28 +146,82 @@ const CountdownTimer = ({ ucmState, themeColors }: { ucmState: UCMState, themeCo
     return <Text style={{fontWeight: 'bold', color: themeColors.tint}}>{label} {timeLeft}</Text>;
 };
 
-const getIMScheduleText = (schedule: IMSchedule | undefined | null, t: TFunction): { schedule: string; wct: string } | null => {
+const getIMScheduleText = (
+  schedule: IMSchedule | undefined | null,
+  t: TFunction,
+  dateFormat: string
+): { schedule: string; wct: string } | null => {
     if (!schedule) return null;
 
     const promptTime = dayjs(`1970-01-01T${schedule.clc_prompt_time}`).format('HH:mm');
-    const scheduleText = `${t(`ucm_page.schedule_form_im.option_${schedule.clc_type}`)} at ${promptTime}`;
+    let scheduleText = '';
 
-    const wctUnit = t(`ucm_page.time_unit_${schedule.wct_duration_unit}`);
+    switch(schedule.clc_type) {
+        case 'every_day':
+            scheduleText = t('ucm_page.schedule.loop_base', { 
+                type: t('ucm_page.schedule_form_im.option_every_day').toLowerCase(), 
+                time: promptTime 
+            });
+            break;
+        case 'specific_days':
+            scheduleText = t('ucm_page.schedule.loop_every_days', {
+                count: schedule.clc_day_number_interval, 
+                time: promptTime 
+            });
+            break;
+        case 'day_of_week':
+            scheduleText = t('ucm_page.schedule.day_of_week', { 
+                day: t(`ucm_page.day_${schedule.clc_day_of_week?.toLowerCase()}`),  
+                time: promptTime 
+            });
+            break;
+        case 'date_of_month':
+            scheduleText = t('ucm_page.schedule.date_of_month', { 
+                date: schedule.clc_date_of_month, 
+                time: promptTime 
+            });
+            break;
+        case 'date_of_year':
+            const [day, month] = schedule.clc_date_of_year?.split('/') || [];
+            scheduleText = t('ucm_page.schedule.date_of_year', { 
+                day, 
+                month: t(`ucm_page.schedule.month_keys.${parseInt(month, 10)}`), 
+                time: promptTime 
+            });
+            break;
+        case 'specific_date_in_year':
+            scheduleText = t('ucm_page.schedule.specific_date', { 
+                date: dayjs(schedule.clc_specific_date).format(dateFormat),
+                time: promptTime 
+            });
+            break;
+        default:
+            scheduleText = t('ucm_page.im_section.not_scheduled');
+    }
+
+    const wctUnitKey = schedule.wct_duration_unit === 'hours' ? 'hours' : 'minutes';
+    const wctUnit = t(`ucm_page.time_unit_${wctUnitKey}`);
     const wctText = t('ucm_page.schedule_form_im.wct_duration_text', { value: schedule.wct_duration_value, unit: wctUnit });
 
     return { schedule: scheduleText, wct: wctText };
 };
 
-const getFMScheduleText = (schedule: FMSchedule | undefined | null, t: TFunction): string => {
+const getFMScheduleText = (schedule: FMSchedule | undefined | null, t: TFunction, dateFormat: string): string => {
     if (!schedule) return t('ucm_page.im_section.not_scheduled');
     const time = dayjs(`1970-01-01T${schedule.sending_time_of_day}`).format('HH:mm');
     let text = '';
     switch(schedule.trigger_type) {
-        case 'days_after_im_sent': text = t('ucm_page.schedule.days_after', { count: schedule.days_after_im_value, time }); break;
+        case 'days_after_im_sent':
+          if (schedule.days_after_im_value === 0) {
+              text = t('ucm_page.schedule.same_day', { time });
+          } else {
+              text = t('ucm_page.schedule.days_after', { count: schedule.days_after_im_value, time });
+          }
+        break;
         case 'day_of_week': text = t('ucm_page.schedule.day_of_week', { day: t(`ucm_page.day_${schedule.day_of_week_value?.toLowerCase()}`), time }); break;
         case 'date_of_month': text = t('ucm_page.schedule.date_of_month', { date: schedule.date_of_month_value, time }); break;
-        case 'date_of_year': const [day, month] = schedule.date_of_year_value?.split('/') || []; text = t('ucm_page.schedule.date_of_year', { day, month: t(`ucm_page.month_${dayjs().month(parseInt(month)-1).format('MMM').toLowerCase()}`), time }); break;
-        case 'specific_date': text = t('ucm_page.schedule.specific_date', { date: dayjs(schedule.specific_date_value).format('DD/MM/YYYY'), time }); break;
+        case 'date_of_year': const [day, month] = schedule.date_of_year_value?.split('/') || []; text = t('ucm_page.schedule.date_of_year', { day, month: t(`ucm_page.schedule.month_keys.${parseInt(month, 10)}`), time }); break;
+        case 'specific_date': text = t('ucm_page.schedule.specific_date', { date: dayjs(schedule.specific_date_value).format(dateFormat), time }); break;
         default: text = t('ucm_page.im_section.not_scheduled');
     }
     if (schedule.repeat_number > 1) text += ` (${t('ucm_page.schedule.repeats', { count: schedule.repeat_number })})`;
@@ -199,7 +253,9 @@ export default function UcmScreen() {
   const { theme } = useTheme();
   const themeColors = Colors[theme];
   const styles = createStyles(themeColors, theme);
-
+  const params = useLocalSearchParams<{
+    autoAction?: 'activate' | 'stop';
+  }>();
   const [fullState, setFullState] = useState<FullUCMState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -207,10 +263,24 @@ export default function UcmScreen() {
   const [activeFmFilter, setActiveFmFilter] = useState<FMStatus | 'all'>('all');
   const [isPinModalVisible, setIsPinModalVisible] = useState(false);
   const pinModalRef = useRef<PinModalRef>(null);
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const refreshUserRef = React.useRef(refreshUser);
+  useEffect(() => { refreshUserRef.current = refreshUser; }, [refreshUser]);
+  interface UcmStats {
+    activeCount: number;
+    activeLimit: number;
+    storedCount: number;
+    storedLimit: number;
+  }
+  const [stats, setStats] = useState<UcmStats | null>(null);
   const userDateFormat = useMemo(() => {
       const format = user?.date_format || 'dd/mm/yyyy';
       return `${format.toUpperCase()} HH:mm`;
+  }, [user?.date_format]);
+  const userDayjsFormat = useMemo(() => {
+      if (user?.date_format === 'mm/dd/yyyy') return 'MM/DD/YYYY';
+      if (user?.date_format === 'yyyy/mm/dd') return 'YYYY/MM/DD';
+      return 'DD/MM/YYYY';
   }, [user?.date_format]);
   const [isMethodModalVisible, setIsMethodModalVisible] = useState(false);
   const [imToEditId, setImToEditId] = useState<string | null>(null);
@@ -220,8 +290,22 @@ export default function UcmScreen() {
   const fetchData = useCallback(async (isRefresh = false) => {
       if (!isRefresh) setIsLoading(true);
       try {
-        const response = await api.get<FullUCMState>('/api/ucm/full-state');
-        setFullState(response.data);
+        const [ucmResponse, userResponse] = await Promise.all([
+            api.get<FullUCMState>('/api/ucm/full-state'),
+            refreshUserRef.current()
+        ]);
+
+        setFullState(ucmResponse.data);
+
+        if (userResponse) {
+            setStats({
+                activeCount: userResponse.max_active_messages - (userResponse.messages_remaining ?? 0),
+                activeLimit: userResponse.max_active_messages,
+                storedCount: userResponse.max_stored_messages - (userResponse.stored_messages_remaining ?? 0),
+                storedLimit: userResponse.max_stored_messages,
+            });
+        }
+
       } catch (error: any) {
         if (error.response?.status === 403) {
           router.replace('/fns');
@@ -235,96 +319,10 @@ export default function UcmScreen() {
   }, [router, t]);
 
   useFocusEffect(useCallback(() => { setIsLoading(true); fetchData(); }, [fetchData]));
+
   const onRefresh = useCallback(() => { setIsRefreshing(true); fetchData(true); }, [fetchData]);
 
-  const filteredFollowMessages = useMemo(() => {
-    if (!followMessages) return [];
-    if (activeFmFilter === 'all') return followMessages;
-    return followMessages.filter(fm => fm.status === activeFmFilter);
-  }, [followMessages, activeFmFilter]);
-
-  const handleCreateNew = async () => {
-    setImToEditId(null);
-    try {
-        // 1. Gọi đúng endpoint mà SCM đang gọi
-        const response = await api.get('/api/users/smtp-settings');
-        const smtpData = response.data;
-
-        // 2. Xây dựng danh sách methods dựa trên kết quả API
-        const methods: MethodOption[] = [
-            { key: 'cronpost_email', label: t('scm_page.method_cp_email') },
-            { key: 'in_app_messaging', label: t('scm_page.method_iam') },
-        ];
-        if (smtpData.is_active) {
-            methods.push({ key: 'user_email', label: 'SMTP', email: smtpData.smtp_sender_email || '' });
-        }
-
-        // 3. Cập nhật state và hiển thị modal
-        setMethodOptions(methods);
-        setIsMethodModalVisible(true);
-    } catch (error) {
-        Alert.alert(t('errors.title_error'), translateApiError(error));
-    }
-  };
-
-  const handleImEditPress = async (imId: string) => {
-    setImToEditId(imId); // <-- Lưu ID của IM cần sửa
-    try {
-        const response = await api.get('/api/users/smtp-settings');
-        const smtpData = response.data;
-        const methods: MethodOption[] = [
-            { key: 'cronpost_email', label: t('scm_page.method_cp_email') },
-            { key: 'in_app_messaging', label: t('scm_page.method_iam') },
-        ];
-        if (smtpData.is_active) {
-            methods.push({ key: 'user_email', label: 'SMTP', email: smtpData.smtp_sender_email || '' });
-        }
-        setMethodOptions(methods);
-        setIsMethodModalVisible(true);
-    } catch (error) {
-        Alert.alert(t('errors.title_error'), translateApiError(error));
-    }
-  }; 
-
-  const handleMethodSelect = async (method: 'cronpost_email' | 'in_app_messaging' | 'user_email') => {
-      setIsMethodModalVisible(false);
-
-      if (imToEditId) {
-          // --- Logic cập nhật phương thức cho IM ---
-          setActionLoading('im_action');
-          try {
-              // Gọi API chuyên dụng để thay đổi phương thức gửi
-              await api.put('/api/ucm/im/method', { sending_method: method });
-              Toast.show({
-                  type: 'success',
-                  text2: t('ucm_page.prompts.method_update_success')
-              });
-              // Sau khi cập nhật thành công, điều hướng đến trang soạn thảo
-              router.push({
-                  pathname: '/(main)/ucm/compose',
-                  params: { messageType: 'IM', ucmId: imToEditId }
-              });
-          } catch (error) {
-              Alert.alert(t('errors.title_error'), translateApiError(error));
-          } finally {
-              setActionLoading(null);
-              setImToEditId(null); // Reset ID sau khi hoàn tất
-          }
-      } else {
-          // --- Logic tạo mới (giữ nguyên) ---
-          const messageType = initialMessage ? 'FM' : 'IM';
-          router.push({
-              pathname: '/(main)/ucm/compose',
-              params: { messageType, sendingMethod: method }
-          });
-      }
-  };
-
-  const handleEdit = (messageType: 'IM' | 'FM', id: string) => {
-    router.push({ pathname: '/(main)/ucm/compose', params: { messageType, ucmId: id } });
-  };
-  
-  const handleIMAction = async (action: 'stop' | 'activate' | 'delete' | 'check-in') => {
+  const handleIMAction = useCallback(async (action: 'stop' | 'activate' | 'delete' | 'check-in') => {
       const confirmText = t(`ucm_page.prompts.confirm_im_${action.replace('-', '')}`);
       Alert.alert(t('confirm_modal.default_title'), confirmText, [
           { text: t('confirm_modal.btn_cancel'), style: 'cancel' },
@@ -339,36 +337,125 @@ export default function UcmScreen() {
               } catch (error) { Alert.alert(t('errors.title_error'), translateApiError(error)); } finally { setActionLoading(null); }
           }}
       ]);
+  }, [t, fetchData]);
+
+  useEffect(() => {
+    if (!isLoading && params.autoAction && fullState?.initialMessage) {
+      if (params.autoAction === 'activate') {
+        handleIMAction('activate');
+      } else if (params.autoAction === 'stop') {
+        handleIMAction('stop');
+      }
+      router.setParams({ autoAction: undefined });
+    }
+  }, [isLoading, params.autoAction, fullState, handleIMAction, router]);
+
+  const filteredFollowMessages = useMemo(() => {
+    if (!followMessages) return [];
+    if (activeFmFilter === 'all') return followMessages;
+    return followMessages.filter(fm => fm.status === activeFmFilter);
+  }, [followMessages, activeFmFilter]);
+
+  const handleCreateNew = async () => {
+    setImToEditId(null);
+    let smtpData: { is_active: boolean; smtp_sender_email?: string } | null = null;
+    try {
+        const response = await api.get('/api/users/smtp-settings');
+        smtpData = response.data;
+    } catch (error: any) {
+        if (error.response?.status !== 404) {
+            Alert.alert(t('errors.title_error'), translateApiError(error));
+            return;
+        }
+    }
+
+    const methods: MethodOption[] = [
+        { key: 'cronpost_email', label: t('scm_page.method_cp_email') },
+        { key: 'in_app_messaging', label: t('scm_page.method_iam') },
+    ];
+
+    if (smtpData?.is_active) {
+        methods.push({ key: 'user_email', label: t('ucm_page.method_smtp_short'), email: smtpData.smtp_sender_email || '' });
+    }
+
+    setMethodOptions(methods);
+    setIsMethodModalVisible(true);
+  };
+
+  const handleImEditPress = async (imId: string) => {
+    setImToEditId(imId);
+    let smtpData: { is_active: boolean; smtp_sender_email?: string } | null = null;
+    try {
+        const response = await api.get('/api/users/smtp-settings');
+        smtpData = response.data;
+    } catch (error: any) {
+        if (error.response?.status !== 404) {
+            Alert.alert(t('errors.title_error'), translateApiError(error));
+            return;
+        }
+    }
+
+    const methods: MethodOption[] = [
+        { key: 'cronpost_email', label: t('scm_page.method_cp_email') },
+        { key: 'in_app_messaging', label: t('scm_page.method_iam') },
+    ];
+
+    if (smtpData?.is_active) {
+        methods.push({ key: 'user_email', label: t('ucm_page.method_smtp_short'), email: smtpData.smtp_sender_email || '' });
+    }
+    
+    setMethodOptions(methods);
+    setIsMethodModalVisible(true);
+  };
+
+  const handleMethodSelect = async (method: 'cronpost_email' | 'in_app_messaging' | 'user_email') => {
+      setIsMethodModalVisible(false);
+
+      if (imToEditId) {
+          setActionLoading('im_action');
+          try {
+              await api.put('/api/ucm/im/method', { sending_method: method });
+              Toast.show({
+                  type: 'success',
+                  text2: t('ucm_page.prompts.method_update_success')
+              });
+              router.push({
+                  pathname: '/(main)/ucm/compose',
+                  params: { messageType: 'IM', ucmId: imToEditId }
+              });
+          } catch (error) {
+              Alert.alert(t('errors.title_error'), translateApiError(error));
+          } finally {
+              setActionLoading(null);
+              setImToEditId(null);
+          }
+      } else {
+          const messageType = initialMessage ? 'FM' : 'IM';
+          router.push({
+              pathname: '/(main)/ucm/compose',
+              params: { messageType, sendingMethod: method }
+          });
+      }
+  };
+
+  const handleEdit = (messageType: 'IM' | 'FM', id: string) => {
+    router.push({ pathname: '/(main)/ucm/compose', params: { messageType, ucmId: id } });
   };
 
   const handleCheckIn = async () => {
     if (!user) return;
-
-    const BIOMETRICS_KEY = `biometrics_enabled_for_${user.id}`;
-    const isBiometricsEnabled = await SecureStore.getItemAsync(BIOMETRICS_KEY);
-
-    // Trường hợp 1: Sinh trắc học được bật và người dùng có mã PIN
-    if (isBiometricsEnabled === 'true' && user.has_pin) {
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: t('biometrics.prompt_message'),
-      });
-
-      if (result.success) {
-        // Nếu thành công, thực hiện check-in ngay lập tức (không cần PIN)
-        await performCheckIn(null);
-      } else {
-        // Nếu thất bại hoặc bị hủy, quay về phương án dự phòng là mã PIN
-        setIsPinModalVisible(true);
-      }
-    // Trường hợp 2: Sinh trắc học không bật, nhưng yêu cầu PIN cho mọi hành động
-    } else if (user.use_pin_for_all_actions) {
+    if (user.use_pin_for_all_actions) {
       setIsPinModalVisible(true);
-    // Trường hợp 3: Không có bảo mật đặc biệt, chỉ cần xác nhận
-    } else {
-      Alert.alert(t('confirm_modal.default_title'), t('ucm_page.prompts.confirm_im_checkin'), [
-          { text: t('confirm_modal.btn_cancel'), style: 'cancel' },
-          { text: t('confirm_modal.btn_confirm'), onPress: () => performCheckIn(null) }
-      ]);
+    } 
+    else {
+      Alert.alert(
+        t('confirm_modal.default_title'), 
+        t('ucm_page.prompts.confirm_im_checkin'), 
+        [
+            { text: t('confirm_modal.btn_cancel'), style: 'cancel' },
+            { text: t('confirm_modal.btn_confirm'), onPress: () => performCheckIn(null) }
+        ]
+      );
     }
   };
 
@@ -422,13 +509,13 @@ export default function UcmScreen() {
   
   const renderNoImView = () => ( <View style={styles.centered}><Ionicons name="shield-checkmark-outline" size={60} color={themeColors.icon} /><Text style={styles.noImHeader}>{t('ucm_page.no_im_header')}</Text><Text style={styles.noImText}>{t('ucm_page.no_im_text')}</Text></View> );
 
-const renderImCard = () => {
+  const renderImCard = () => {
     const statusKeyMap: Record<UserAccountStatus, string> = {
       INS: 'inactive', ANS_CLC: 'active', ANS_WCT: 'wct', FNS: 'fns',
     };
     const statusKey = ucmState ? statusKeyMap[ucmState.status] : 'inactive';
     const methodStyle = getMethodBadgeStyle(initialMessage!.sending_method, styles);
-    const scheduleInfo = getIMScheduleText(initialMessage?.schedule, t);
+    const scheduleInfo = getIMScheduleText(initialMessage?.schedule, t, userDayjsFormat);
 
     return (
       <View style={styles.card}>
@@ -479,7 +566,7 @@ const renderImCard = () => {
           </View>
 
           <View style={styles.countdownContainer}>
-             {ucmState && ucmState.status !== 'INS' && <CountdownTimer ucmState={ucmState} themeColors={themeColors} />}
+              {ucmState && ucmState.status !== 'INS' && <CountdownTimer ucmState={ucmState} themeColors={themeColors} onTimerEnd={() => fetchData(true)} />}
           </View>
           <View style={styles.cardFooter}>
               <Text style={styles.updatedAtText}>
@@ -514,7 +601,7 @@ const renderImCard = () => {
             </View>
             <View style={styles.scheduleContainer}>
                 <Ionicons name="time-outline" size={16} color={themeColors.icon} />
-                <Text style={styles.scheduleText}>{getFMScheduleText(item.schedule, t)}</Text>
+                <Text style={styles.scheduleText}>{getFMScheduleText(item.schedule, t, userDayjsFormat)}</Text>
             </View>
             <View style={styles.cardFooter}>
                 <Text style={styles.updatedAtText}>
@@ -522,9 +609,17 @@ const renderImCard = () => {
                 </Text>
                 <View style={styles.actionsContainer}>
                     {(item.status === 'draft' || item.status === 'pending') && <TouchableOpacity style={[styles.actionButton, styles.actionButtonPrimary]} onPress={() => handleEdit('FM', item.id)}><Text style={styles.actionButtonText}>{t('ucm_page.fm_section.btn_edit')}</Text></TouchableOpacity>}
-                    {item.status === 'pending' && <TouchableOpacity style={[styles.actionButton, styles.actionButtonDanger]} onPress={() => handleFMAction(item.id, 'cancel')}><Text style={styles.actionButtonText}>{t('ucm_page.fm_section.btn_cancel')}</Text></TouchableOpacity>}
-                    {item.status === 'draft' && <TouchableOpacity style={[styles.actionButton, styles.actionButtonDanger]} onPress={() => handleFMAction(item.id, 'delete')}><Text style={styles.actionButtonText}>{t('ucm_page.fm_section.btn_delete')}</Text></TouchableOpacity>}
-                    {(item.status === 'completed' || item.status === 'canceled' || item.status === 'failed') && <TouchableOpacity style={[styles.actionButton, styles.actionButtonPrimary]} onPress={() => handleEdit('FM', item.id)}><Text style={styles.actionButtonText}>{t('ucm_page.fm_section.btn_reschedule')}</Text></TouchableOpacity>}
+                    {item.status === 'pending' && <TouchableOpacity style={[styles.actionButton, styles.actionButtonWarning]} onPress={() => handleFMAction(item.id, 'cancel')}><Text style={styles.actionButtonText}>{t('ucm_page.fm_section.btn_cancel')}</Text></TouchableOpacity>}
+                    {(item.status === 'completed' || item.status === 'canceled' || item.status === 'failed') && (
+                        <TouchableOpacity style={[styles.actionButton, styles.actionButtonPrimary]} onPress={() => handleEdit('FM', item.id)}>
+                            <Text style={styles.actionButtonText}>{t('ucm_page.fm_section.btn_reschedule')}</Text>
+                        </TouchableOpacity>
+                    )}
+                    {(item.status === 'draft' || item.status === 'completed' || item.status === 'canceled' || item.status === 'failed') && (
+                        <TouchableOpacity style={[styles.actionButton, styles.actionButtonDanger]} onPress={() => handleFMAction(item.id, 'delete')}>
+                            <Text style={styles.actionButtonText}>{t('ucm_page.fm_section.btn_delete')}</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             </View>
         </View>
@@ -542,53 +637,92 @@ const renderImCard = () => {
 
   if (isLoading) return <View style={[styles.container, styles.centered]}><ActivityIndicator size="large" color={themeColors.tint} /></View>;
 
-  return (
-    <SafeAreaView style={styles.container}>
-        <FlatList
-            data={filteredFollowMessages}
-            renderItem={renderFmItem}
-            keyExtractor={(item) => item.id}
-            ListHeaderComponent={
-                <>
-                {!initialMessage ? renderNoImView() : (
-                    <>
-                        {/* Tiêu đề section được đưa ra ngoài card */}
-                        <Text style={styles.sectionTitle}>{t('ucm_page.im_section.title')}</Text>
-                        {renderImCard()}
-                    </>
-                )}
-                {initialMessage && <Text style={styles.sectionTitle}>{t('ucm_page.fm_section.title')}</Text>}
-                {initialMessage && 
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
-                        {filterOptions.map(opt => (
-                            <TouchableOpacity key={opt.key} style={[styles.filterButton, activeFmFilter === opt.key && styles.activeFilterButton]} onPress={() => setActiveFmFilter(opt.key)}>
-                                <Text style={[styles.filterButtonText, activeFmFilter === opt.key && styles.activeFilterButtonText]}>{opt.label}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                }
-                </>
-            }
-            ListEmptyComponent={initialMessage ? <View style={styles.centered}><Text style={styles.noImText}>{t('ucm_page.fm_section.empty_list')}</Text></View> : null}
-            refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={themeColors.tint} />}
-            contentContainerStyle={{ paddingBottom: 100 }}
-        />
-        <TouchableOpacity style={styles.fab} onPress={handleCreateNew}><Ionicons name="add" size={32} color="white" /></TouchableOpacity>
-        <PinModal
-            ref={pinModalRef}
-            isVisible={isPinModalVisible}
-            onClose={() => setIsPinModalVisible(false)}
-            onSubmit={(pin) => performCheckIn(pin)}
-            promptText={t('ucm_page.prompts.pin_for_checkin')}
-        />
-        <SendingMethodModal
-            isVisible={isMethodModalVisible}
-            methods={methodOptions}
-            onClose={() => setIsMethodModalVisible(false)}
-            onSelect={handleMethodSelect}
-        />
-    </SafeAreaView>
+  const WctView = () => (
+    <View style={[styles.centered, { paddingBottom: 50 }]}>
+        <Ionicons name="shield-checkmark-outline" size={80} color={themeColors.tint} />
+        <Text style={styles.noImHeader}>{t('ucm_page.wct_view.title')}</Text>
+        <Text style={styles.noImText}>{t('ucm_page.wct_view.description')}</Text>
+            <TouchableOpacity 
+                style={[
+                    styles.actionButton, 
+                    { 
+                        backgroundColor: themeColors.tint, 
+                        width: 200, 
+                        height: 60, 
+                        borderRadius: 30, 
+                        marginTop: 20,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                    }
+                ]} 
+                onPress={handleCheckIn}
+            >
+            <Text style={[styles.actionButtonText, { fontSize: 18 }]}>{t('ucm_page.im_section.btn_checkin')}</Text>
+        </TouchableOpacity>
+    </View>
   );
+
+    if (isLoading) return <View style={[styles.container, styles.centered]}><ActivityIndicator size="large" color={themeColors.tint} /></View>;
+
+    return (
+        <SafeAreaView style={styles.container}>
+            {ucmState?.status === 'ANS_WCT' ? (
+                <WctView />
+            ) : (
+                <>
+                    <FlatList
+                        data={filteredFollowMessages}
+                        renderItem={renderFmItem}
+                        keyExtractor={(item) => item.id}
+                        ListHeaderComponent={
+                            <>
+                                {!initialMessage ? renderNoImView() : (
+                                    <>
+                                        <Text style={styles.sectionTitle}>{t('ucm_page.im_section.title')}</Text>
+                                        {renderImCard()}
+                                    </>
+                                )}
+                                {initialMessage && <Text style={styles.sectionTitle}>{t('ucm_page.fm_section.title')}</Text>}
+                                {initialMessage && 
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
+                                        {filterOptions.map(opt => (
+                                            <TouchableOpacity key={opt.key} style={[styles.filterButton, activeFmFilter === opt.key && styles.activeFilterButton]} onPress={() => setActiveFmFilter(opt.key)}>
+                                                <Text style={[styles.filterButtonText, activeFmFilter === opt.key && styles.activeFilterButtonText]}>{opt.label}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                }
+                            </>
+                        }
+                        ListEmptyComponent={initialMessage ? <View style={styles.centered}><Text style={styles.noImText}>{t('ucm_page.fm_section.empty_list')}</Text></View> : null}
+                        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={themeColors.tint} />}
+                        contentContainerStyle={{ paddingBottom: 150 }}
+                    />
+                    {stats && (
+                    <View style={styles.statsFooter}>
+                        <Text style={styles.statsText}>{t('scm_page.label_active_messages')} {stats.activeCount}/{stats.activeLimit}</Text>
+                        <Text style={styles.statsText}>{t('scm_page.label_stored_messages')} {stats.storedCount}/{stats.storedLimit}</Text>
+                    </View>
+                    )}
+                    <TouchableOpacity style={styles.fab} onPress={handleCreateNew}><Ionicons name="add" size={32} color="white" /></TouchableOpacity>
+                </>
+            )}
+
+            <PinModal
+                ref={pinModalRef}
+                isVisible={isPinModalVisible}
+                onClose={() => setIsPinModalVisible(false)}
+                onSubmit={(pin) => performCheckIn(pin)}
+                promptText={t('ucm_page.prompts.pin_for_checkin')}
+            />
+            <SendingMethodModal
+                isVisible={isMethodModalVisible}
+                methods={methodOptions}
+                onClose={() => setIsMethodModalVisible(false)}
+                onSelect={handleMethodSelect}
+            />        
+        </SafeAreaView>
+    );
 }
 
 const createStyles = (themeColors: any, theme: 'light' | 'dark') => StyleSheet.create({
@@ -601,10 +735,10 @@ const createStyles = (themeColors: any, theme: 'light' | 'dark') => StyleSheet.c
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, borderBottomWidth: 0, borderBottomColor: themeColors.inputBorder },
     statusBadge: { paddingVertical: 1, paddingHorizontal: 1, borderRadius: 0 },
     statusBadgeText: { fontSize: 12, fontWeight: '500', color: 'white' },
-    statusINS: { backgroundColor: '#6c757d' }, // Inactive
-    statusANS_CLC: { backgroundColor: '#28a745' }, // Active
-    statusANS_WCT: { backgroundColor: '#ffc107', color: '#000' }, // WCT
-    statusFNS: { backgroundColor: '#dc3545' }, // Frozen
+    statusINS: { backgroundColor: '#6c757d' },
+    statusANS_CLC: { backgroundColor: '#28a745' },
+    statusANS_WCT: { backgroundColor: '#ffc107', color: '#000' },
+    statusFNS: { backgroundColor: '#dc3545' },
     fmStatusdraft: { backgroundColor: '#6c757d'},
     fmStatuspending: { backgroundColor: '#0d6efd'},
     fmStatuscompleted: { backgroundColor: '#198754'},
@@ -619,7 +753,7 @@ const createStyles = (themeColors: any, theme: 'light' | 'dark') => StyleSheet.c
         paddingHorizontal: 15, 
         paddingBottom: 5 
     },
-    scheduleRow: { // <-- THÊM STYLE NÀY
+    scheduleRow: {
       flexDirection: 'row',
       alignItems: 'center',
       marginBottom: 2,
@@ -628,7 +762,7 @@ const createStyles = (themeColors: any, theme: 'light' | 'dark') => StyleSheet.c
         marginLeft: 6, 
         fontSize: 13, 
         color: themeColors.icon, 
-        flex: 1, // Để chiếm hết không gian còn lại
+        flex: 1,
         flexShrink: 1 
     },
     countdownContainer: { paddingHorizontal: 15, paddingBottom: 10, color: themeColors.tint },
@@ -637,18 +771,35 @@ const createStyles = (themeColors: any, theme: 'light' | 'dark') => StyleSheet.c
       fontSize: 12,
       color: themeColors.icon,
       fontStyle: 'italic',
-      flexShrink: 1, // Đảm bảo không bị tràn nếu không đủ không gian
-      paddingRight: 10, // Thêm khoảng cách với các nút
+      flexShrink: 1,
+      paddingRight: 10,
+    },
+    statsFooter: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      paddingVertical: 10,
+      paddingBottom: 25,
+      backgroundColor: themeColors.card,
+      borderTopWidth: 1,
+      borderTopColor: themeColors.inputBorder,
+    },
+    statsText: {
+      fontSize: 12,
+      color: themeColors.icon,
     },
     cardTitle: { 
       fontSize: 18, 
       fontWeight: 'bold', 
       color: themeColors.text, 
-      flex: 1, // Quan trọng: để tiêu đề chiếm hết không gian
-      marginRight: 10, // Tạo khoảng cách với nhóm badge
+      flex: 1,
+      marginRight: 10,
     },
     badgeGroupContainer: {
-        alignItems: 'flex-end', // Căn các badge về phía phải
+        alignItems: 'flex-end',
     },
     methodBadge: {
         paddingHorizontal: 1,
@@ -675,5 +826,5 @@ const createStyles = (themeColors: any, theme: 'light' | 'dark') => StyleSheet.c
     activeFilterButton: { backgroundColor: themeColors.tint },
     filterButtonText: { color: themeColors.text, fontWeight: '500' },
     activeFilterButtonText: { color: '#FFFFFF' },
-    fab: { position: 'absolute', bottom: 25, right: 20, width: 60, height: 60, borderRadius: 30, backgroundColor: themeColors.tint, justifyContent: 'center', alignItems: 'center', elevation: 8, },
+    fab: { position: 'absolute', bottom: 80, right: 20, width: 60, height: 60, borderRadius: 30, backgroundColor: themeColors.tint, justifyContent: 'center', alignItems: 'center', elevation: 8, },
 });

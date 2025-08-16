@@ -1,12 +1,11 @@
 // app/(main)/settings/profile.tsx
-// Version: 1.3.0
+// Version: 1.3.2 (TypeScript Fixed)
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react'; // FIX: Thêm useCallback
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -18,11 +17,34 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import api from '../../../src/api/api';
 import { Colors } from '../../../src/constants/Colors';
-import { useAuth } from '../../../src/store/AuthContext';
+import { useAuth } from '../../../src/store/AuthContext'; // FIX: Thêm useAuth
 import { useTheme } from '../../../src/store/ThemeContext';
 import { translateApiError } from '../../../src/utils/errorTranslator';
+
+// --- Types ---
+// FIX: Định nghĩa kiểu dữ liệu cho Timezone item
+interface TimezoneItem {
+  name: string;
+  offset: string;
+}
+
+// FIX: Định nghĩa kiểu dữ liệu cho User data
+interface UserData {
+  email: string;
+  user_name: string;
+  timezone: string;
+  date_format: string;
+  membership_type: 'free' | 'premium';
+  max_active_messages: number;
+  messages_remaining: number;
+  max_stored_messages: number;
+  stored_messages_remaining: number;
+  uploaded_storage_bytes: number;
+  storage_limit_gb: number;
+}
 
 // --- Helper Functions ---
 const getGmtString = (timeZone: string) => {
@@ -30,7 +52,9 @@ const getGmtString = (timeZone: string) => {
     const date = new Date();
     const parts = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'longOffset' }).formatToParts(date);
     return parts.find(part => part.type === 'timeZoneName')?.value || 'GMT';
-  } catch (e) { return 'GMT'; }
+  } catch { // FIX: Loại bỏ biến 'e' không sử dụng
+    return 'GMT'; 
+  }
 };
 
 const dateFormats = [
@@ -60,44 +84,47 @@ const ProgressBar = ({ value, max }: { value: number; max: number }) => {
 const ProfileScreen = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
+  const { refreshUser } = useAuth(); // FIX: Lấy hàm refreshUser từ AuthContext
   const themeColors = Colors[theme];
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [userData, setUserData] = useState(null);
+  // FIX: Cung cấp kiểu dữ liệu UserData hoặc null cho state
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [formState, setFormState] = useState({ userName: '', timezone: '', dateFormat: 'dd/mm/yyyy' });
   
   const [isTimezoneModalVisible, setTimezoneModalVisible] = useState(false);
   const [isDateFormatModalVisible, setDateFormatModalVisible] = useState(false);
   const [timezoneSearch, setTimezoneSearch] = useState('');
-  const [timezonesList, setTimezonesList] = useState([]);
+  // FIX: Cung cấp kiểu dữ liệu TimezoneItem[] cho state
+  const [timezonesList, setTimezonesList] = useState<TimezoneItem[]>([]);
 
+  // FIX: Thêm kiểu dữ liệu cho tham số của filter
   const filteredTimezones = useMemo(() => {
     if (!timezoneSearch) return timezonesList;
-    return timezonesList.filter(tz => tz.name.toLowerCase().includes(timezoneSearch.toLowerCase()));
+    return timezonesList.filter((tz: TimezoneItem) => tz.name.toLowerCase().includes(timezoneSearch.toLowerCase()));
   }, [timezoneSearch, timezonesList]);
 
-  const fetchInitialData = async () => {
+  // FIX: Bọc hàm trong useCallback để tối ưu và sửa lỗi dependency
+  const fetchInitialData = useCallback(async () => {
     try {
-      // Fetch user data and timezones in parallel
       const [userResponse, timezonesResponse] = await Promise.all([
         api.get('/api/users/me'),
         api.get('/api/users/timezones')
       ]);
 
-      // Process user data
       setUserData(userResponse.data);
       setFormState({
         userName: userResponse.data.user_name || '',
         timezone: userResponse.data.timezone || 'UTC',
         dateFormat: userResponse.data.date_format || 'dd/mm/yyyy',
       });
-
-      // Process timezones
-      const formattedTimezones = timezonesResponse.data.map(tz => ({
+      
+      // FIX: Thêm kiểu dữ liệu cho các tham số
+      const formattedTimezones = timezonesResponse.data.map((tz: string): TimezoneItem => ({
           name: tz,
           offset: getGmtString(tz),
-      })).sort((a, b) => {
+      })).sort((a: TimezoneItem, b: TimezoneItem) => {
           const offsetA = parseInt(a.offset.replace('GMT', '').split(':')[0], 10);
           const offsetB = parseInt(b.offset.replace('GMT', '').split(':')[0], 10);
           return offsetA - offsetB;
@@ -105,17 +132,20 @@ const ProfileScreen = () => {
       setTimezonesList(formattedTimezones);
 
     } catch (error) {
-      Alert.alert(t('errors.fetch_user'), translateApiError(error));
+      Toast.show({
+        type: 'error',
+        text1: t('errors.fetch_user'),
+        text2: translateApiError(error),
+      });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t]); // t là dependency nếu bạn dùng nó trong hàm (dù ở đây là trong catch)
 
   useEffect(() => {
     fetchInitialData();
-  }, []);
+  }, [fetchInitialData]); // FIX: Thêm fetchInitialData vào dependency array
 
-  const { refreshUser } = useAuth();
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
@@ -125,11 +155,20 @@ const ProfileScreen = () => {
         date_format: formState.dateFormat,
       };
       await api.put('/api/users/profile', payload);
-      await refreshUser();
-      Alert.alert(t('profile_page.success_profile_saved'));
+      await refreshUser(); // Hàm này giờ đã được định nghĩa
+
+      Toast.show({
+        type: 'success',
+        text1: t('profile_page.success_profile_saved'),
+      });
+
       await fetchInitialData();
     } catch (error) {
-      Alert.alert(t('errors.save_profile'), translateApiError(error));
+      Toast.show({
+        type: 'error',
+        text1: t('errors.save_profile'),
+        text2: translateApiError(error),
+      });
     } finally {
       setIsSaving(false);
     }
@@ -200,7 +239,7 @@ const ProfileScreen = () => {
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeaderContainer}><Text style={styles.modalHeader}>{t('profile_page.timezone_label')}</Text><TouchableOpacity style={styles.modalCloseButton} onPress={() => setTimezoneModalVisible(false)}><Ionicons name="close" size={24} color={themeColors.text} /></TouchableOpacity></View>
             <TextInput style={styles.modalSearchInput} placeholder="Search timezone..." placeholderTextColor={themeColors.icon} value={timezoneSearch} onChangeText={setTimezoneSearch} />
-            <FlatList data={filteredTimezones} keyExtractor={(item) => item.name} renderItem={({ item }) => (<TouchableOpacity style={styles.modalItem} onPress={() => { setFormState({...formState, timezone: item.name}); setTimezoneModalVisible(false); setTimezoneSearch(''); }}><Text style={styles.modalItemText}>{item.name}</Text><Text style={styles.modalItemSubText}>{item.offset}</Text></TouchableOpacity>)} />
+            <FlatList data={filteredTimezones} keyExtractor={(item) => item.name} renderItem={({ item }: { item: TimezoneItem }) => (<TouchableOpacity style={styles.modalItem} onPress={() => { setFormState({...formState, timezone: item.name}); setTimezoneModalVisible(false); setTimezoneSearch(''); }}><Text style={styles.modalItemText}>{item.name}</Text><Text style={styles.modalItemSubText}>{item.offset}</Text></TouchableOpacity>)} />
           </Pressable>
         </Pressable>
       </Modal>

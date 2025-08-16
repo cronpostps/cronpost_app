@@ -1,19 +1,20 @@
 // app/(main)/settings/trustVerifier.tsx
+// Version: 1.1.0 (Replaced Alerts with Toasts)
 
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import Toast from 'react-native-toast-message'; // FIX: Thêm import Toast
 import api from '../../../src/api/api';
 import { Colors } from '../../../src/constants/Colors';
 import { useAuth } from '../../../src/store/AuthContext';
@@ -33,7 +34,9 @@ export default function TrustVerifierScreen() {
 
   useEffect(() => {
     if (user) {
-      setVerifierEmail(user.trust_verifier_email || '');
+      // FIX: Đảm bảo user.trust_verifier_email được load chính xác
+      const initialEmail = user.trust_verifier_email || '';
+      setVerifierEmail(initialEmail);
       setIsLoading(false);
     }
   }, [user]);
@@ -45,24 +48,41 @@ export default function TrustVerifierScreen() {
 
   const handleSave = async () => {
     if (verifierEmail && !validateEmail(verifierEmail)) {
-      Alert.alert(t('errors.generic', { message: '' }), t('trust_verifier_page.error_invalid_email'));
+      // FIX: Thay thế Alert bằng Toast cho lỗi email không hợp lệ
+      Toast.show({
+        type: 'error',
+        text1: t('errors.title_error'),
+        text2: t('trust_verifier_page.error_invalid_email')
+      });
       return;
     }
 
     setIsSaving(true);
     try {
-      // API yêu cầu gửi lại các trường khác trong profile, ta lấy từ user context
       const payload = {
-        user_name: user.user_name,
-        timezone: user.timezone,
-        trust_verifier_email: verifierEmail || null, // Gửi null nếu chuỗi rỗng
+        user_name: user?.user_name,
+        timezone: user?.timezone,
+        date_format: user?.date_format,
+        trust_verifier_email: verifierEmail || null,
       };
       await api.put('/api/users/profile', payload);
-      await refreshUser(); // Cập nhật lại user context
-      Alert.alert(t('security_page.biometrics_success_title'), t('trust_verifier_page.success_saved'));
-      router.back();
+      await refreshUser();
+
+      // FIX: Thay thế Alert bằng Toast cho thông báo thành công
+      // Dùng onHide để quay lại màn hình sau khi toast biến mất
+      Toast.show({
+        type: 'success',
+        text1: t('trust_verifier_page.success_saved'),
+        onHide: () => router.back(),
+      });
+
     } catch (error) {
-      Alert.alert(t('errors.generic', { message: '' }), translateApiError(error));
+      // FIX: Thay thế Alert bằng Toast cho lỗi từ API
+      Toast.show({
+        type: 'error',
+        text1: t('errors.title_error'),
+        text2: translateApiError(error)
+      });
     } finally {
       setIsSaving(false);
     }

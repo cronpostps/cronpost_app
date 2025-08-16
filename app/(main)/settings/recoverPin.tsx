@@ -3,7 +3,8 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 import api from '../../../src/api/api';
 import { Colors } from '../../../src/constants/Colors';
 import { useAuth } from '../../../src/store/AuthContext';
@@ -23,29 +24,32 @@ export default function RecoverPinScreen() {
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
-    if (newPin.length !== 4) {
-      Alert.alert(t('errors.generic', {message: ''}), t('create_pin_page.error_pin_format'));
-      return;
-    }
-    if (newPin !== confirmPin) {
-      Alert.alert(t('errors.generic', {message: ''}), t('create_pin_page.error_pin_mismatch'));
-      return;
-    }
-    
-    setIsSaving(true);
-    try {
-      await api.post('/api/users/recover-pin', {
-        recovery_code: recoveryCode,
-        new_pin: newPin,
-      });
-      await refreshUser();
-      Alert.alert(t('security_page.biometrics_success_title'), t('recover_pin_page.success_pin_recovered'));
-      router.back();
-    } catch (error) {
-      Alert.alert(t('errors.generic', {message: ''}), translateApiError(error));
-    } finally {
-      setIsSaving(false);
-    }
+      if (newPin.length !== 4) {
+          Toast.show({ type: 'error', text1: t('errors.title_error'), text2: t('create_pin_page.error_pin_format') });
+          return;
+      }
+      if (newPin !== confirmPin) {
+          Toast.show({ type: 'error', text1: t('errors.title_error'), text2: t('create_pin_page.error_pin_mismatch') });
+          return;
+      }
+
+      setIsSaving(true);
+      try {
+          await api.post('/api/users/recover-pin', {
+              recovery_code: recoveryCode,
+              new_pin: newPin,
+          });
+          await refreshUser();
+          Toast.show({
+              type: 'success',
+              text1: t('recover_pin_page.success_pin_recovered'),
+              onHide: () => router.back(),
+          });
+      } catch (error) {
+          Toast.show({ type: 'error', text1: t('errors.title_error'), text2: translateApiError(error) });
+      } finally {
+          setIsSaving(false);
+      }
   };
 
   const styles = StyleSheet.create({

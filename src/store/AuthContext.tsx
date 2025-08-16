@@ -1,12 +1,13 @@
 // src/store/AuthContext.tsx
-// Version: 1.9.7
+// Version: 2.0.0 (Refactored with Auto Check-in & Stable Handlers)
 
 import * as Google from 'expo-auth-session/providers/google';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useRouter, useSegments } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 import api from '../api/api';
 import PinModal, { PinModalRef } from '../components/PinModal';
 import { GoogleAuthConfig } from '../config/googleAuthConfig';
@@ -24,22 +25,27 @@ interface User {
   timezone: string | null;
   date_format: string;
   has_pin: boolean;
-  membership_type: 'free' | 'premium'; // Thêm hạng thành viên
+  membership_type: 'free' | 'premium';
+  is_smtp_configured: boolean;
+  smtp_sender_email: string | null;
+  max_subject_length: number;
+  max_message_chars_free: number;
+  max_message_chars_premium: number;
 
-  // Thêm tất cả các trường giới hạn từ backend
+  // Các trường đã được bổ sung
+  account_status: string; 
+  checkin_on_signin: boolean;
+  use_pin_for_all_actions: boolean;
+  pin_code_question: string | null;
+  trust_verifier_email: string | null;
+  
+  // Thêm các trường giới hạn từ backend (nếu cần)
   limit_recipients_cronpost_email_free: number;
   limit_recipients_in_app_messaging_free: number;
   limit_recipients_user_email_free: number;
   limit_recipients_cronpost_email_premium: number;
   limit_recipients_in_app_messaging_premium: number;
   limit_recipients_user_email_premium: number;
-
-  // Thêm các trường khác mà MessageComposer có thể cần
-  is_smtp_configured: boolean;
-  smtp_sender_email: string | null;
-  max_subject_length: number;
-  max_message_chars_free: number;
-  max_message_chars_premium: number;
 }
 
 interface TimezoneInfo {
@@ -67,6 +73,7 @@ const checkAndUpdateTimezone = async (
   hasShown: boolean, 
   setHasShown: React.Dispatch<React.SetStateAction<boolean>>
 ) => {
+  // ... (Nội dung hàm này giữ nguyên)
   if (!user || !user.timezone || hasShown) return;
 
   try {
@@ -155,6 +162,39 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
         setIsAppLocked(true);
       }
     };
+
+    const performAutoCheckinIfNeeded = useCallback(async (userToCheck: User) => {
+        // Thêm điều kiện kiểm tra account_status
+        if (userToCheck.checkin_on_signin && 
+            !userToCheck.use_pin_for_all_actions &&
+            userToCheck.account_status === 'ANS_WCT') { // <-- Điều kiện mới quan trọng
+            
+            try {
+                console.log('Performing automatic check-in (Status: WCT)...');
+                await api.post('/api/ucm/check-in', { pin_code: null });
+                Toast.show({
+                    type: 'success',
+                    text1: i18n.t('dashboard_page.alert_checkin_success'),
+                    visibilityTime: 2000,
+                });
+            } catch (error) {
+                // Giữ lại log này vì nó sẽ chỉ xuất hiện khi có lỗi thực sự, không mong muốn
+                console.error("Auto check-in failed unexpectedly:", error);
+            }
+        }
+    }, []);
+        
+    const handleSuccessfulLogin = useCallback(async (accessToken: string, refreshToken: string) => {
+        await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
+        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
+        
+        const userResponse = await api.get('/api/users/me');
+        const currentUser: User = userResponse.data;
+        setUser(currentUser);
+        setAuthState({ accessToken: accessToken, refreshToken: refreshToken, isAuthenticated: true });
+
+        await performAutoCheckinIfNeeded(currentUser);
+    }, [performAutoCheckinIfNeeded]);
     
     useEffect(() => {
       const handleGoogleResponse = async () => {
@@ -180,7 +220,7 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
         }
       };
       if (response) { handleGoogleResponse(); }
-    }, [response]);
+    }, [response, handleSuccessfulLogin]);
   
     useEffect(() => {
       const loadTokens = async () => {
@@ -192,13 +232,14 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
             const userResponse = await api.get('/api/users/me');
             const currentUser: User = userResponse.data;
             setUser(currentUser);
+            
+            await performAutoCheckinIfNeeded(currentUser);
 
             const biometricsKey = `biometrics_enabled_for_${currentUser.id}`;
             const isBiometricsEnabled = await SecureStore.getItemAsync(biometricsKey);
 
             if (currentUser.has_pin) {
                 setIsAppLocked(true);
-                
                 if (isBiometricsEnabled === 'true') {
                     const result = await LocalAuthentication.authenticateAsync({
                         promptMessage: i18n.t('biometrics.prompt_message'),
@@ -218,23 +259,23 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
             setAuthState({ accessToken: null, refreshToken: null, isAuthenticated: false });
             setIsAppLocked(false);
           }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        } catch (_e: any) {
+
+        } catch {
           signOut();
         } finally {
           setIsLoading(false);
         }
       };
       loadTokens();
-    }, []);
+    }, [performAutoCheckinIfNeeded]);
     
     useEffect(() => {
-      if (user && !isLoading && user.notifications_enabled) { 
+      if (user && !isLoading) { 
         checkAndUpdateTimezone(user, setUser, hasShownTimezoneAlert, setHasShownTimezoneAlert);
-        console.log('User has notifications enabled. Registering for push notifications...');
-        registerForPushNotificationsAsync();        
-      } else if (user && !isLoading) {
-        checkAndUpdateTimezone(user, setUser, hasShownTimezoneAlert, setHasShownTimezoneAlert);
+        if (user.notifications_enabled) {
+          console.log('User has notifications enabled. Registering for push notifications...');
+          registerForPushNotificationsAsync();        
+        }
       }
     }, [user, isLoading, hasShownTimezoneAlert]);
   
@@ -244,14 +285,6 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
       if (authState.isAuthenticated && !inAuthGroup) { router.replace('/(main)/dashboard'); } 
       else if (!authState.isAuthenticated && inAuthGroup) { router.replace('/'); }
     }, [authState.isAuthenticated, isLoading, segments, router]);
-  
-    const handleSuccessfulLogin = async (accessToken: string, refreshToken: string) => {
-        await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
-        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
-        const userResponse = await api.get('/api/users/me');
-        setUser(userResponse.data);
-        setAuthState({ accessToken: accessToken, refreshToken: refreshToken, isAuthenticated: true });
-    }
   
     const signIn = async (email: string, password: string) => {
       try {
@@ -279,8 +312,6 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
     };
 
     const handlePinClose = () => {
-        // Giữ cho modal luôn hiển thị để không thể bỏ qua bước nhập PIN
-        // Nếu cần, có thể thêm logic thoát ứng dụng ở đây
         setPinModalVisible(true);
     };
 
