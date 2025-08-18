@@ -19,7 +19,10 @@ export type Theme = {
   inputBorder: string;
   buttonBackground: string;
   buttonText: string;
-  card: string; // Thêm thuộc tính 'card'
+  card: string;
+  primary: string;
+  textSecondary: string;
+  border: string;
 };
 
 // 2. Áp dụng Type đã định nghĩa và thêm giá trị cho 'card'
@@ -35,7 +38,10 @@ export const Colors: { light: Theme; dark: Theme } = {
     inputBorder: '#cccccc',
     buttonBackground: '#007bff',
     buttonText: '#ffffff',
-    card: '#ffffff', // Thêm giá trị cho light theme (màu trắng)
+    card: '#ffffff',
+    primary: tintColorLight,
+    textSecondary: '#6c757d',
+    border: '#dee2e6',
   },
   dark: {
     text: '#e0e0e0',
@@ -48,7 +54,10 @@ export const Colors: { light: Theme; dark: Theme } = {
     inputBorder: '#495057',
     buttonBackground: '#007bff',
     buttonText: '#ffffff',
-    card: '#2b3035', // Thêm giá trị cho dark theme (dùng màu nền input)
+    card: '#2b3035',
+    primary: tintColorDark,
+    textSecondary: '#adb5bd',
+    border: '#495057',
   },
 };
 

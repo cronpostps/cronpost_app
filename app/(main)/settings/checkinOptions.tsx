@@ -35,6 +35,7 @@ export default function CheckinOptionsScreen() {
     useCheckinToken: false,
     sendReminder: false,
     reminderMinutes: '5',
+    defaultEmailReminders: true,
   });
 
   useEffect(() => {
@@ -47,6 +48,7 @@ export default function CheckinOptionsScreen() {
           useCheckinToken: data.use_checkin_token_email,
           sendReminder: data.send_additional_reminder,
           reminderMinutes: data.additional_reminder_minutes?.toString() || '5',
+          defaultEmailReminders: data.default_email_checkin_reminders ?? true,
         });
       } catch (error) {
         console.error("Failed to fetch check-in settings", error);
@@ -59,7 +61,12 @@ export default function CheckinOptionsScreen() {
 
   const handleSettingUpdate = async (update: Partial<typeof settings>) => {
     const originalSettings = { ...settings };
-    const newSettings = { ...settings, ...update };
+    let newSettings = { ...settings, ...update };
+
+    if (update.defaultEmailReminders === false) {
+        newSettings.useCheckinToken = false;
+    }
+
     setSettings(newSettings);
 
     try {
@@ -68,6 +75,7 @@ export default function CheckinOptionsScreen() {
         use_checkin_token_email: newSettings.useCheckinToken,
         send_additional_reminder: newSettings.sendReminder,
         additional_reminder_minutes: parseInt(newSettings.reminderMinutes, 10) || 5,
+        default_email_checkin_reminders: newSettings.defaultEmailReminders,
       };
       await api.put('/api/users/checkin-settings', payload);
 
@@ -93,7 +101,7 @@ export default function CheckinOptionsScreen() {
     switchItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 },
     itemTextContainer: { flex: 1, marginRight: 10 },
     itemLabel: { fontSize: 16, color: themeColors.text },
-    itemDescription: { fontSize: 12, color: themeColors.icon, marginTop: 2 },
+    itemDescription: { fontSize: 12, color: themeColors.icon, marginTop: 2, lineHeight: 16 },
     minutesInputContainer: { paddingBottom: 15 },
     minutesInput: { height: 45, borderWidth: 1, borderColor: themeColors.inputBorder, borderRadius: 8, paddingHorizontal: 10, fontSize: 16, color: themeColors.text, backgroundColor: themeColors.background, marginTop: 8 },
     disabledOverlay: { opacity: 0.5 },
@@ -124,6 +132,21 @@ export default function CheckinOptionsScreen() {
         <View style={[styles.itemContainer, { marginTop: 30 }]}>
           <View style={styles.switchItem}>
             <View style={styles.itemTextContainer}>
+              <Text style={styles.itemLabel}>{t('checkin_options_page.default_email_reminders_label')}</Text>
+              <Text style={[styles.itemDescription]}>{t('checkin_options_page.default_email_reminders_note')}</Text>
+            </View>
+            <Switch
+              value={settings.defaultEmailReminders}
+              onValueChange={(value) => handleSettingUpdate({ defaultEmailReminders: value })}
+              trackColor={{ false: themeColors.inputBorder, true: themeColors.tint }}
+              thumbColor={'#ffffff'}
+            />
+          </View>
+        </View>
+
+        <View style={[styles.itemContainer, { marginTop: 30 }]}>
+          <View style={styles.switchItem}>
+            <View style={styles.itemTextContainer}>
               <Text style={styles.itemLabel}>{t('checkin_options_page.one_click_email_label')}</Text>
               <Text style={styles.itemDescription}>{t('checkin_options_page.one_click_email_desc')}</Text>
             </View>
@@ -131,7 +154,8 @@ export default function CheckinOptionsScreen() {
               value={settings.useCheckinToken} 
               onValueChange={(value) => handleSettingUpdate({ useCheckinToken: value })}
               trackColor={{ false: themeColors.inputBorder, true: themeColors.tint }} 
-              thumbColor={'#ffffff'} 
+              thumbColor={'#ffffff'}
+              disabled={!settings.defaultEmailReminders}
             />
           </View>
         </View>
