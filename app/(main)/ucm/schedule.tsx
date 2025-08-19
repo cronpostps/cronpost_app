@@ -1,5 +1,5 @@
 // app/(main)/ucm/schedule.tsx
-// Version: 2.2.1
+// Version: 2.2.3
 
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
@@ -30,7 +30,6 @@ import { useTheme } from '../../../src/store/ThemeContext';
 import { translateApiError } from '../../../src/utils/errorTranslator';
 import { FMSchedule, FollowUpMessage, IMSchedule } from './index';
 
-// --- Type Definitions ---
 type MessageType = 'IM' | 'FM';
 type ScheduleMode = 'loop' | 'unloop';
 
@@ -59,14 +58,12 @@ export default function UcmScheduleScreen() {
         sendingMethod: params.sendingMethod,
     }), [params]);
 
-    // --- Common State ---
     const [isLoading, setIsLoading] = useState(!!params.ucmId);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('loop');
     const deviceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const timezone = user?.timezone || deviceTimezone;  
      
-    // --- IM State ---
     const [imClcType, setImClcType] = useState<PickerOption>({ value: 'every_day', label: t('ucm_page.schedule_form_im.option_every_day') });
     const [imClcDaysInterval, setImClcDaysInterval] = useState('2');
     const [imClcDayOfWeek, setImClcDayOfWeek] = useState<PickerOption>({ value: 'Mon', label: t('ucm_page.day_mon') });
@@ -79,7 +76,6 @@ export default function UcmScheduleScreen() {
     const [showImTimePicker, setShowImTimePicker] = useState(false);
     const [showImTimePickerOneTime, setShowImTimePickerOneTime] = useState(false);
 
-    // --- FM State ---
     const [fmTriggerType, setFmTriggerType] = useState<PickerOption>({ value: 'days_after_im_sent', label: t('ucm_page.schedule_form_fm.option_days_after') });
     const [fmDaysAfter, setFmDaysAfter] = useState('1');
     const [fmDayOfWeek, setFmDayOfWeek] = useState<PickerOption>({ value: 'Mon', label: t('ucm_page.day_mon') });
@@ -98,14 +94,13 @@ export default function UcmScheduleScreen() {
     const [fmDayOfYear, setFmDayOfYear] = useState<PickerOption | null>(null);
     const [imMonthOfYear, setImMonthOfYear] = useState<PickerOption | null>(null);
     const [imDayOfYear, setImDayOfYear] = useState<PickerOption | null>(null);
-    // --- Picker State ---
+
     const [pickerVisible, setPickerVisible] = useState(false);
     const [pickerStyle, setPickerStyle] = useState<'list' | 'wheel'>('list');
     const [pickerOptions, setPickerOptions] = useState<PickerOption[]>([]);
     const [pickerTitle, setPickerTitle] = useState('');
     const [currentPicker, setCurrentPicker] = useState<string | null>(null);
 
-    // --- Memoized Options ---
     const dayOfWeekOptions = useMemo(() => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => ({ value: day, label: t(`ucm_page.day_${day.toLowerCase()}`) })), [t]);
     const imClcTypeOptions = useMemo(() => [
         { value: 'every_day', label: t('ucm_page.schedule_form_im.option_every_day') },
@@ -137,7 +132,6 @@ export default function UcmScheduleScreen() {
         if (!fmMonthOfYear) return [];
         const month = parseInt(fmMonthOfYear.value, 10);
         const daysInMonth = dayjs().month(month - 1).daysInMonth();
-        // Đặc biệt xử lý tháng 2 cho năm nhuận
         const finalDays = month === 2 ? 29 : daysInMonth;
         return Array.from({ length: finalDays }, (_, i) => ({
             value: String(i + 1),
@@ -149,7 +143,6 @@ export default function UcmScheduleScreen() {
         if (!imMonthOfYear) return [];
         const month = parseInt(imMonthOfYear.value, 10);
         const daysInMonth = dayjs().month(month - 1).daysInMonth();
-        // Xử lý đơn giản cho tháng 2 có 29 ngày
         const finalDays = month === 2 ? 29 : daysInMonth;
         return Array.from({ length: finalDays }, (_, i) => ({
             value: String(i + 1),
@@ -160,7 +153,7 @@ export default function UcmScheduleScreen() {
     const userDayjsFormat = useMemo(() => {
         if (user?.date_format === 'mm/dd/yyyy') return 'MM/DD/YYYY';
         if (user?.date_format === 'yyyy/mm/dd') return 'YYYY/MM/DD';
-        return 'DD MMMM, YYYY'; // Giữ lại định dạng cũ làm mặc định
+        return 'DD MMMM, YYYY';
     }, [user?.date_format]);
 
     const populateForm = useCallback((schedule: IMSchedule | FMSchedule) => {
@@ -180,17 +173,29 @@ export default function UcmScheduleScreen() {
                 setImClcDateOfMonth(String(imSchedule.clc_date_of_month || '1'));
                 if (imSchedule.clc_date_of_year) {
                     const [day, month] = imSchedule.clc_date_of_year.split('/');
-                    const newDate = new Date();
-                    newDate.setMonth(parseInt(month, 10) - 1, parseInt(day, 10));
-                    setImClcDate(newDate);
+                    const monthNumber = parseInt(month, 10);
+                    const monthOpt = monthOptions.find(m => m.value === String(monthNumber));
+                    if (monthOpt) {
+                        setImMonthOfYear(monthOpt);
+                    }
+                    const dayStr = String(parseInt(day, 10));
+                    setImDayOfYear({ value: dayStr, label: dayStr });
                 }
             }
-            if (imSchedule.clc_prompt_time) setImClcPromptTime(dayjs(`1970-01-01T${imSchedule.clc_prompt_time}`).toDate());
+            if (imSchedule.clc_prompt_time) {
+                const timeParts = String(imSchedule.clc_prompt_time).split(':').map(Number);
+                const todayWithServerTime = dayjs()
+                    .hour(timeParts[0] || 0)
+                    .minute(timeParts[1] || 0)
+                    .second(timeParts[2] || 0);
+
+                setImClcPromptTime(todayWithServerTime.toDate());
+            }
             setImWctValue(String(imSchedule.wct_duration_value || '24'));
             const unitOption = wctUnitOptions.find(u => u.value === imSchedule.wct_duration_unit) || wctUnitOptions[0];
             setImWctUnit(unitOption);
 
-        } else { // FM
+        } else {
             const fmSchedule = schedule as FMSchedule;
             const isUnloop = fmSchedule.trigger_type === 'specific_date';
             setScheduleMode(isUnloop ? 'unloop' : 'loop');
@@ -198,10 +203,8 @@ export default function UcmScheduleScreen() {
             let finalFmDate = new Date();
             finalFmDate.setHours(9, 0, 0, 0);
             if (isUnloop && fmSchedule.specific_date_value) {
-                // Nếu là unloop, lấy cả ngày và giờ từ specific_date_value
                 finalFmDate = dayjs(fmSchedule.specific_date_value).toDate();
             } else {
-                // Nếu là loop, chỉ lấy giờ từ sending_time_of_day và gán vào ngày hiện tại
                 const triggerOption = fmTriggerTypeOptions.find(opt => opt.value === fmSchedule.trigger_type) || fmTriggerTypeOptions[0];
                 setFmTriggerType(triggerOption);
                 setFmDaysAfter(String(fmSchedule.days_after_im_value || '1'));
@@ -215,19 +218,20 @@ export default function UcmScheduleScreen() {
                     setFmDayOfYear({ value: String(parseInt(day, 10)), label: String(parseInt(day, 10)) });
                 }
             }
-
-            // Luôn áp dụng giờ từ sending_time_of_day nếu có, ghi đè lên giờ mặc định hoặc giờ từ specific_date_value
             if (fmSchedule.sending_time_of_day) {
-                const timeFromApi = dayjs(`1970-01-01T${fmSchedule.sending_time_of_day}`);
-                finalFmDate.setHours(timeFromApi.hour(), timeFromApi.minute());
+                const timeParts = String(fmSchedule.sending_time_of_day).split(':').map(Number);
+                finalFmDate = dayjs(finalFmDate)
+                    .hour(timeParts[0] || 0)
+                    .minute(timeParts[1] || 0)
+                    .second(timeParts[2] || 0)
+                    .toDate();
             }
 
-            setFmDate(finalFmDate); // Cập nhật state một lần duy nhất với giá trị đúng
+            setFmDate(finalFmDate);
             setFmRepeat(String(fmSchedule.repeat_number || '1'));
         }
     }, [params.messageType, dayOfWeekOptions, imClcTypeOptions, fmTriggerTypeOptions, wctUnitOptions, monthOptions]);
 
-    // --- Effects ---
     useEffect(() => {
         const defaultTime = new Date();
         defaultTime.setHours(9, 0, 0, 0);
@@ -308,14 +312,12 @@ export default function UcmScheduleScreen() {
     }, [fmTriggerType, fmDaysAfter, fmRepeat]);
 
     useEffect(() => {
-        // Tự động điều chỉnh ngày khi tháng thay đổi để tránh ngày không hợp lệ
         if (fmDayOfYear && fmMonthOfYear) {
             const maxDays = dayOptionsForMonth.length;
             if (parseInt(fmDayOfYear.value, 10) > maxDays) {
                 setFmDayOfYear({ value: String(maxDays), label: String(maxDays) });
             }
         }
-        // Hiển thị cảnh báo cho ngày 29/02
         if (fmMonthOfYear?.value === '2' && fmDayOfYear?.value === '29') {
             setFmDateOfYearWarning(t('warnings.feb_29_skip'));
         } else {
@@ -323,7 +325,6 @@ export default function UcmScheduleScreen() {
         }
     }, [fmMonthOfYear, fmDayOfYear, dayOptionsForMonth, t]);
 
-    // --- Handlers ---
     const handleSubmit = async () => {
         setIsSubmitting(true);
         let payload: any = {
@@ -365,7 +366,7 @@ export default function UcmScheduleScreen() {
                         wct_duration_unit: imWctUnit.value,
                     };
                 }
-            } else { // FM
+            } else {
                 endpoint = isEditing ? `/api/ucm/fm/${params.ucmId}` : '/api/ucm/fm';
                 if (scheduleMode === 'loop') {
                     payload.schedule = {
@@ -420,12 +421,11 @@ export default function UcmScheduleScreen() {
 
     const WarningText = ({ text }: { text: string | null }) => text ? <Text style={styles.warningText}>{text}</Text> : null;
     
-    // --- Picker and DateTime Handlers ---
     const openPicker = (pickerType: string, title: string, options: PickerOption[], style: 'list' | 'wheel' = 'list') => {
         setCurrentPicker(pickerType);
         setPickerTitle(title);
         setPickerOptions(options);
-        setPickerStyle(style); // <-- Dòng mới
+        setPickerStyle(style);
         setPickerVisible(true);
     };
     const onPickerSelect = (option: PickerOption) => {
@@ -442,7 +442,6 @@ export default function UcmScheduleScreen() {
         }
     };
 
-    // --- Render Functions ---
     const renderIMFields = () => (
         <View>
             <View style={styles.infoAlert}>
@@ -645,9 +644,12 @@ export default function UcmScheduleScreen() {
             mode="date"
             onClose={() => setShowImDatePicker(false)}
             onSelect={(date) => {
-                const newDate = new Date(imClcDate);
-                newDate.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
-                setImClcDate(newDate);
+                const newSelection = dayjs(date);
+                const updatedDate = dayjs(imClcDate)
+                    .year(newSelection.year())
+                    .month(newSelection.month())
+                    .date(newSelection.date());
+                setImClcDate(updatedDate.toDate());
             }}
             timeZoneName={timezone}
         />
@@ -657,31 +659,44 @@ export default function UcmScheduleScreen() {
             mode="time"
             onClose={() => setShowImTimePickerOneTime(false)}
             onSelect={(date) => {
-                const newDate = new Date(imClcDate);
-                newDate.setHours(date.getHours(), date.getMinutes());
-                setImClcDate(newDate);
+                const newSelection = dayjs(date);
+                const updatedDate = dayjs(imClcDate)
+                    .hour(newSelection.hour())
+                    .minute(newSelection.minute())
+                    .second(newSelection.second());
+                setImClcDate(updatedDate.toDate());
             }}
             timeZoneName={timezone}
         />
         <SafeDateTimePicker
-          isVisible={showImTimePicker}
-          value={imClcPromptTime}
-          mode="time"
-          onClose={() => setShowImTimePicker(false)}
-          onSelect={setImClcPromptTime}
-          timeZoneName={timezone}
+            isVisible={showImTimePicker}
+            value={imClcPromptTime}
+            mode="time"
+            onClose={() => setShowImTimePicker(false)}
+            onSelect={(date) => {
+                const newSelection = dayjs(date);
+                const updatedTime = dayjs(imClcPromptTime)
+                    .hour(newSelection.hour())
+                    .minute(newSelection.minute())
+                    .second(newSelection.second());
+                setImClcPromptTime(updatedTime.toDate());
+            }}
+            timeZoneName={timezone}
         />
         <SafeDateTimePicker
-          isVisible={showFmDatePicker}
-          value={fmDate}
-          mode="date"
-          onClose={() => setShowFmDatePicker(false)}
+            isVisible={showFmDatePicker}
+            value={fmDate}
+            mode="date"
+            onClose={() => setShowFmDatePicker(false)}
             onSelect={(date) => {
-                const newDate = new Date(fmDate);
-                newDate.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
-                setFmDate(newDate);
+                const newSelection = dayjs(date);
+                const updatedDate = dayjs(fmDate)
+                    .year(newSelection.year())
+                    .month(newSelection.month())
+                    .date(newSelection.date());
+                setFmDate(updatedDate.toDate());
             }}
-          timeZoneName={timezone}
+            timeZoneName={timezone}
         />
         <SafeDateTimePicker
             isVisible={showFmTimePicker}
@@ -689,9 +704,12 @@ export default function UcmScheduleScreen() {
             mode="time"
             onClose={() => setShowFmTimePicker(false)}
             onSelect={(date) => {
-                const newDate = new Date(fmDate);
-                newDate.setHours(date.getHours(), date.getMinutes());
-                setFmDate(newDate);
+                const newSelection = dayjs(date);
+                const updatedDate = dayjs(fmDate)
+                    .hour(newSelection.hour())
+                    .minute(newSelection.minute())
+                    .second(newSelection.second());
+                setFmDate(updatedDate.toDate());
             }}
             timeZoneName={timezone}
         />
@@ -701,10 +719,13 @@ export default function UcmScheduleScreen() {
             mode="time"
             onClose={() => setShowFmTimePickerOneTime(false)}
             onSelect={(date) => {
-                const newDate = new Date(fmDate);
-                newDate.setHours(date.getHours(), date.getMinutes());
-                setFmDate(newDate);
-    }}
+                const newSelection = dayjs(date);
+                const updatedDate = dayjs(fmDate)
+                    .hour(newSelection.hour())
+                    .minute(newSelection.minute())
+                    .second(newSelection.second());
+                setFmDate(updatedDate.toDate());
+            }}
             timeZoneName={timezone}
         />
         {pickerStyle === 'list' && (

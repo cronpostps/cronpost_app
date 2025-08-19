@@ -32,7 +32,6 @@ import { translateApiError } from '../../../src/utils/errorTranslator';
 
 dayjs.extend(relativeTime);
 
-// --- Interfaces & Types ---
 export type UserAccountStatus = 'INS' | 'ANS_CLC' | 'ANS_WCT' | 'FNS';
 export type SendingMethod = 'in_app_messaging' | 'cronpost_email' | 'user_email';
 export type CLCType = 'every_day' | 'specific_days' | 'day_of_week' | 'date_of_month' | 'date_of_year' | 'specific_date_in_year';
@@ -53,25 +52,25 @@ export interface UCMState {
 
 export interface IMSchedule {
   clc_type: CLCType;
-  clc_prompt_time: string; // "HH:mm:ss"
+  clc_prompt_time: string;
   wct_duration_value: number;
   wct_duration_unit: WTCDurationUnit;
   clc_day_number_interval?: number;
   clc_day_of_week?: DayOfWeek;
   clc_date_of_month?: number;
-  clc_date_of_year?: string; // "DD/MM"
-  clc_specific_date?: string; // "YYYY-MM-DD"
+  clc_date_of_year?: string;
+  clc_specific_date?: string;
 }
 
 export interface FMSchedule {
   trigger_type: FMTriggerType;
-  sending_time_of_day: string; // "HH:mm:ss"
+  sending_time_of_day: string;
   repeat_number: number;
   days_after_im_value?: number;
   day_of_week_value?: DayOfWeek;
   date_of_month_value?: number;
-  date_of_year_value?: string; // "DD/MM"
-  specific_date_value?: string; // "YYYY-MM-DD"
+  date_of_year_value?: string;
+  specific_date_value?: string;
 }
 
 export interface InitialMessage {
@@ -103,7 +102,6 @@ interface FullUCMState {
   followMessages: FollowUpMessage[];
 }
 
-// --- Helper Components & Functions ---
 const CountdownTimer = ({ ucmState, themeColors, onTimerEnd }: { ucmState: UCMState, themeColors: any, onTimerEnd: () => void }) => {
     const { t } = useTranslation();
     const [timeLeft, setTimeLeft] = useState('');
@@ -246,7 +244,6 @@ const getMethodBadgeStyle = (method: SendingMethod, styles: any) => {
     }
 };
 
-// --- Main Component ---
 export default function UcmScreen() {
   const { t } = useTranslation();
   const router = useRouter();

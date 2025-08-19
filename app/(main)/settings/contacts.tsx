@@ -40,7 +40,7 @@ const ContactsScreen = () => {
   const { theme } = useTheme();
   const router = useRouter();
   const themeColors = Colors[theme];
-
+  const MAX_CONTACTS = 10000;
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,7 +82,10 @@ const ContactsScreen = () => {
             return;
         }
     }
-    router.push('/settings/contactPicker');
+    router.push({
+        pathname: '/settings/contactPicker',
+        params: { currentContactCount: contacts.length }
+    });
   };
 
   const openModal = (mode: 'add' | 'edit', contact: Contact | null = null) => {
@@ -206,8 +209,6 @@ const ContactsScreen = () => {
     header: { padding: 15, backgroundColor: themeColors.card, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: themeColors.inputBorder },
     searchInput: { height: 40, backgroundColor: themeColors.background, borderRadius: 8, paddingHorizontal: 10, fontSize: 16, color: themeColors.text },
     actionsContainer: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 15 },
-    actionButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, backgroundColor: themeColors.background },
-    actionText: { color: themeColors.tint, marginLeft: 8, fontWeight: '500' },
     listContainer: { flex: 1 },
     emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 50 },
     emptyText: { color: themeColors.icon, fontSize: 16 },
@@ -227,6 +228,10 @@ const ContactsScreen = () => {
     modalButtonText: { color: '#fff', fontWeight: 'bold' },
     rightAction: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     actionButtonText: { color: '#fff', fontSize: 12, marginTop: 4 },
+    actionButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, backgroundColor: themeColors.background },
+    actionButtonDisabled: { opacity: 0.5 },
+    limitIndicator: { color: themeColors.icon, fontSize: 12, textAlign: 'center', marginTop: 10 },
+    actionText: { color: themeColors.tint, marginLeft: 8, fontWeight: '500' },
   });
 
   return (
@@ -234,12 +239,23 @@ const ContactsScreen = () => {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TextInput style={styles.searchInput} placeholder={t('contacts_page.search_placeholder')} placeholderTextColor={themeColors.icon} value={searchQuery} onChangeText={setSearchQuery} />
+          <Text style={styles.limitIndicator}>
+            {t('contacts_page.limit_indicator', { count: contacts.length, limit: MAX_CONTACTS })}
+          </Text>
           <View style={styles.actionsContainer}>
-            <TouchableOpacity style={styles.actionButton} onPress={() => openModal('add')}>
+            <TouchableOpacity 
+              style={[styles.actionButton, contacts.length >= MAX_CONTACTS && styles.actionButtonDisabled]} 
+              onPress={() => openModal('add')}
+              disabled={contacts.length >= MAX_CONTACTS}
+            >
               <Ionicons name="add-circle-outline" size={22} color={themeColors.tint} />
               <Text style={styles.actionText}>{t('contacts_page.add_new')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={handleImportContacts}>
+            <TouchableOpacity 
+              style={[styles.actionButton, contacts.length >= MAX_CONTACTS && styles.actionButtonDisabled]} 
+              onPress={handleImportContacts}
+              disabled={contacts.length >= MAX_CONTACTS}
+            >
               <Ionicons name="person-add-outline" size={22} color={themeColors.tint} />
               <Text style={styles.actionText}>{t('contacts_page.import_from_device')}</Text>
             </TouchableOpacity>

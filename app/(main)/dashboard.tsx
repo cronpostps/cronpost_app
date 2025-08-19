@@ -25,7 +25,6 @@ import { useAuth } from '../../src/store/AuthContext';
 import { useTheme } from '../../src/store/ThemeContext';
 import { translateApiError } from '../../src/utils/errorTranslator';
 
-// --- Helper: Countdown Component ---
 const Countdown = ({ target, label, styles }: any) => {
   const [countdown, setCountdown] = useState('');
   const { t } = useTranslation();
@@ -61,7 +60,6 @@ const Countdown = ({ target, label, styles }: any) => {
   );
 };
 
-// --- Main Dashboard Screen ---
 export default function DashboardScreen() {
   const { t } = useTranslation();
   const { user, refreshUser } = useAuth();
@@ -75,18 +73,15 @@ export default function DashboardScreen() {
   const [ucmData, setUcmData] = useState<any>(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [pinModalAction, setPinModalAction] = useState<'check-in' | 'terminate' | null>(null);
-  // --- PIN Modal State ---
   const [isPinModalVisible, setIsPinModalVisible] = useState(false);
   const pinModalRef = useRef<PinModalRef>(null);
-
-  // --- Fix for infinite loop by using useRef for unstable refreshUser function ---
   const refreshUserRef = useRef(refreshUser);
   useEffect(() => {
     refreshUserRef.current = refreshUser;
   }, [refreshUser]);
 
   const forceRefreshData = useCallback(async () => {
-    setIsActionLoading(false); // Fix for stuck disabled button
+    setIsActionLoading(false);
     try {
       const latestUser = await refreshUserRef.current();
       if (!latestUser) throw new Error("Failed to refresh user data.");
@@ -119,7 +114,6 @@ export default function DashboardScreen() {
     forceRefreshData();
   }, [forceRefreshData]);
 
-  // --- Action Handlers ---
   const handleCheckIn = async () => {
     if (!user) return;
 
@@ -176,7 +170,7 @@ export default function DashboardScreen() {
     try {
       await api.post('/api/ucm/terminate', { pin_code: pinCode });
       Toast.show({ type: 'success', text2: t('fns_page.success_terminated') });
-      await forceRefreshData(); // Làm mới lại dashboard để cập nhật trạng thái
+      await forceRefreshData();
     } catch (error) {
       Alert.alert(t('errors.title_error'), translateApiError(error));
       pinModalRef.current?.resetPin();
@@ -193,7 +187,6 @@ export default function DashboardScreen() {
     }
   };
 
-  // --- Render Logic ---
   const renderContent = () => {
     if (isLoading && !isRefreshing) {
       return <ActivityIndicator size="large" color={themeColors.tint} />;
@@ -208,34 +201,34 @@ export default function DashboardScreen() {
     const hasIM = ucmData?.initialMessage;
     const status = user?.account_status;
 
-    if (status === 'FNS') { // e. Đang trong FNS (Ưu tiên kiểm tra cao nhất)
+    if (status === 'FNS') {
       buttonText = t('dashboard_page.btn_stop_fns');
-      buttonColor = '#dc3545'; // Red
+      buttonColor = '#dc3545';
       countdownLabel = t('dashboard_page.countdown_label_fns');
       buttonAction = handleStopFns;
-    } else if (!hasIM) { // a. Chưa có IM (Chỉ xảy ra khi status là INS)
+    } else if (!hasIM) {
       buttonText = t('dashboard_page.btn_create_im');
-      buttonColor = '#28a745'; // Green
+      buttonColor = '#28a745';
       countdownLabel = t('dashboard_page.countdown_label_ins');
       buttonAction = () => router.push('/(main)/ucm');
-    } else if (status === 'INS') { // b. Đã có IM nhưng chưa active
+    } else if (status === 'INS') {
       buttonText = t('dashboard_page.btn_activate_ucm');
-      buttonColor = '#0dcaf0'; // Info Blue
+      buttonColor = '#0dcaf0';
       countdownLabel = t('dashboard_page.countdown_label_inactive_im');
       buttonAction = () => router.push({ pathname: '/(main)/ucm', params: { autoAction: 'activate' } });
-    } else if (status === 'ANS_CLC') { // c. Đang trong CLC
+    } else if (status === 'ANS_CLC') {
       buttonText = t('dashboard_page.btn_deactivate_ucm');
-      buttonColor = '#ffc107'; // Yellow
+      buttonColor = '#ffc107';
       countdownLabel = t('ucm_page.im_section.countdown_clc'); 
       countdownTarget = ucmData?.ucmState?.countdownUntil;
       buttonAction = () => router.push({ pathname: '/(main)/ucm', params: { autoAction: 'stop' } });
-    } else if (status === 'ANS_WCT') { // d. Đang trong WCT
+    } else if (status === 'ANS_WCT') {
       buttonText = t('dashboard_page.btn_check_in');
-      buttonColor = themeColors.tint; // Orange
+      buttonColor = themeColors.tint;
       countdownLabel = t('ucm_page.im_section.countdown_wct');
       countdownTarget = ucmData?.ucmState?.countdownUntil;
       buttonAction = handleCheckIn;
-    } else { // Trường hợp dự phòng
+    } else {
       countdownLabel = t('dashboard_page.countdown_label_unknown');
     }
 

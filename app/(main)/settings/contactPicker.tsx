@@ -3,7 +3,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import * as Contacts from 'expo-contacts';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -22,11 +22,9 @@ import { Colors } from '../../../src/constants/Colors';
 import { useTheme } from '../../../src/store/ThemeContext';
 import { translateApiError } from '../../../src/utils/errorTranslator';
 
-// FIX: Tinh chỉnh lại Type để chặt chẽ hơn
-// Định nghĩa một kiểu contact có id và email hợp lệ
 interface ValidDeviceContact extends Contacts.Contact {
-  id: string; // id là bắt buộc
-  emails: (Contacts.Email & { email: string })[]; // Mảng email không rỗng và email là string
+  id: string;
+  emails: (Contacts.Email & { email: string })[];
 }
 
 const ContactPickerScreen = () => {
@@ -34,12 +32,15 @@ const ContactPickerScreen = () => {
   const { theme } = useTheme();
   const themeColors = Colors[theme];
   const router = useRouter();
-
+  const { currentContactCount } = useLocalSearchParams<{ currentContactCount?: string }>();
   const [deviceContacts, setDeviceContacts] = useState<ValidDeviceContact[]>([]);
   const [selectedContacts, setSelectedContacts] = useState(new Set<string>());
   const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const MAX_CONTACTS = 10000;
+  const currentCount = parseInt(currentContactCount || '0', 10);
+  const remainingSpace = MAX_CONTACTS - currentCount;
 
   useEffect(() => {
     (async () => {
@@ -59,9 +60,6 @@ const ContactPickerScreen = () => {
         fields: [Contacts.Fields.Emails, Contacts.Fields.Name],
       });
 
-      // FIX: Dùng bộ lọc chặt chẽ hơn với Type Predicate 'is ValidDeviceContact'
-      // Thao tác này đảm bảo tất cả contact trong danh sách đều có id và email hợp lệ,
-      // giúp TypeScript hiểu và loại bỏ các lỗi ở những hàm khác.
       const validContacts = data.filter(
         (c): c is ValidDeviceContact =>
           !!c.id && Array.isArray(c.emails) && c.emails.length > 0 && typeof c.emails[0].email === 'string'
@@ -77,6 +75,13 @@ const ContactPickerScreen = () => {
     if (newSelection.has(contactId)) {
       newSelection.delete(contactId);
     } else {
+      if (remainingSpace <= newSelection.size) {
+        Toast.show({
+            type: 'info',
+            text1: t('contacts_page.import_limit_reached_toast')
+        });
+        return;
+      }
       newSelection.add(contactId);
     }
     setSelectedContacts(newSelection);
@@ -89,7 +94,7 @@ const ContactPickerScreen = () => {
     const contactsToImport = deviceContacts
       .filter(c => selectedContacts.has(c.id))
       .map(c => ({
-        contact_email: c.emails[0].email, // An toàn để truy cập vì đã lọc ở trên
+        contact_email: c.emails[0].email,
         contact_name: c.name,
       }));
 
@@ -134,8 +139,6 @@ const ContactPickerScreen = () => {
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: themeColors.background },
-    header: { padding: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: themeColors.inputBorder, backgroundColor: themeColors.card },
-    searchInput: { height: 40, backgroundColor: themeColors.inputBackground, borderRadius: 8, paddingHorizontal: 10, fontSize: 16, color: themeColors.text },
     emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
     emptyText: { color: themeColors.icon, fontSize: 16, textAlign: 'center' },
     itemContainer: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: themeColors.inputBorder, backgroundColor: themeColors.card },
@@ -146,6 +149,9 @@ const ContactPickerScreen = () => {
     importButton: { backgroundColor: themeColors.tint, padding: 15, borderRadius: 8, alignItems: 'center' },
     importButtonDisabled: { backgroundColor: themeColors.icon },
     importButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+    header: { padding: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: themeColors.inputBorder, backgroundColor: themeColors.card },
+    infoText: { color: themeColors.icon, fontSize: 12, textAlign: 'center', marginTop: 10 },
+    searchInput: { height: 40, backgroundColor: themeColors.inputBackground, borderRadius: 8, paddingHorizontal: 10, fontSize: 16, color: themeColors.text },
   });
 
   if (isLoading) {
@@ -156,12 +162,15 @@ const ContactPickerScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TextInput style={styles.searchInput} placeholder={t('contacts_page.import_search_placeholder')} placeholderTextColor={themeColors.icon} value={searchQuery} onChangeText={setSearchQuery} />
+        {remainingSpace > 0 && (
+            <Text style={styles.infoText}>
+                {t('contacts_page.import_limit_info', { remaining: remainingSpace })}
+            </Text>
+        )}
       </View>
       <FlatList
         data={filteredContacts}
         renderItem={renderItem}
-        // FIX: Đảm bảo keyExtractor luôn trả về một chuỗi string.
-        // item.id ở đây đã được đảm bảo là string nhờ bộ lọc ở trên.
         keyExtractor={(item) => item.id}
         ListEmptyComponent={() => <View style={styles.emptyContainer}><Text style={styles.emptyText}>{t('contacts_page.no_contacts_found')}</Text></View>}
       />

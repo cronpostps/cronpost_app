@@ -1,5 +1,5 @@
 // app/fns.tsx
-// Version: 2.0.0 (Refactored to a simple redirector)
+// Version: 2.0.0
 
 import { useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
@@ -14,12 +14,10 @@ export default function FnsScreen() {
   const themeColors = Colors[theme];
   const styles = createStyles(themeColors);
 
-  // Tự động chuyển hướng về Dashboard ngay khi màn hình được tải
   useEffect(() => {
     router.replace('/(main)/dashboard');
   }, [router]);
 
-  // Hiển thị một màn hình chờ trong khi chuyển hướng
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>

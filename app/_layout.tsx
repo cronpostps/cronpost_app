@@ -1,5 +1,5 @@
 // app/_layout.tsx
-// Version: 1.8.0 (Added SafeAreaProvider for proper layout)
+// Version: 1.8.0
 
 import { Ionicons } from '@expo/vector-icons';
 import messaging from '@react-native-firebase/messaging';
@@ -10,7 +10,6 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-// FIX: Thêm import từ thư viện SafeArea
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { Colors } from '../src/constants/Colors';
@@ -78,7 +77,6 @@ export default function RootLayout() {
   }, [fontsLoaded, fontError]);
 
   useEffect(() => {
-    // ... (logic xử lý notification giữ nguyên)
     const unsubscribeFromForeground = messaging().onMessage(async remoteMessage => {
       console.log('A new FCM message arrived in foreground!', remoteMessage);
       Toast.show({
@@ -144,7 +142,6 @@ export default function RootLayout() {
     const { theme } = useTheme();
     const themeColors = Colors[theme];
     return (
-      // FIX: Bọc nội dung chính trong SafeAreaView để tự động né thanh trạng thái
       <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.background }}>
         <InitialLayout />
         <Toast />
@@ -154,7 +151,6 @@ export default function RootLayout() {
   };
   
   return (
-    // FIX: Bọc toàn bộ ứng dụng trong SafeAreaProvider
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <ThemeProvider>

@@ -26,7 +26,7 @@ export const translateApiError = (error: any): string => {
     
     // Check if a translation exists for this key
     if (i18n.exists(translationKey)) {
-      return i18n.t(translationKey, detail.context || {});
+      return i18n.t(translationKey, detail.context || {}) as string;
     } else {
       // If no translation, return the original message or code as fallback
       return detail.message || detail.code;

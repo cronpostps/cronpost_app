@@ -279,13 +279,16 @@
     "action_edit": "Edit",
     "permission_denied_title": "Permission Required",
     "permission_denied_body": "CronPost needs permission to access your contacts to import them. Please enable it in your device settings.",
+    "limit_indicator": "{{count}} / {{limit}} Contacts",
     "import_success": "{{count}} contact(s) imported successfully.",
     "import_failed": "Failed to import contacts.",
     "import_title": "Import from Device",
     "import_search_placeholder": "Search device contacts...",
     "btn_import_selected": "Import Selected ({{count}})",
     "no_contacts_found": "No contacts with an email address were found on your device.",
-    "loading_device_contacts": "Loading device contacts..."
+    "loading_device_contacts": "Loading device contacts...",
+    "import_limit_info": "You can import up to {{remaining}} more contacts.",
+    "import_limit_reached_toast": "You have reached the import limit."
   },
   "editor_component": {
     "label_recipients": "Recipients",
@@ -913,6 +916,7 @@
     "ERR_ACTION_CONTACT_NOT_FOUND": "Error: Contact not found.",
     "ERR_IAM_MESSAGE_NOT_FOUND": "Message not found.",
     "ERR_IAM_MESSAGE_UNAUTHORIZED": "You do not have permission to view this message.",
+    "ERR_LIMIT_CONTACTS_REACHED": "Error: You have reached your contact limit of {{limit}}.",
     "ERR_QUOTE_FOLDER_KEY_EXISTS": "Error: A folder with this key already exists for your account.",
     "ERR_QUOTE_FOLDER_NOT_FOUND": "Error: The requested quote folder was not found or is not public.",
     "ERR_QUOTE_CANNOT_SUBSCRIBE_OWN": "Error: You cannot subscribe to your own folder.",

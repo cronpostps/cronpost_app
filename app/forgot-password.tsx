@@ -1,21 +1,22 @@
 // app/forgot-password.tsx
+// version 1.0.0
 
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import api from '../src/api/api';
 import { Colors } from '../src/constants/Colors';
@@ -34,7 +35,6 @@ const ForgotPasswordScreen = () => {
   const handlePasswordReset = async () => {
     setIsLoading(true);
     try {
-      // Logic mobile không cần captchaToken
       await api.post('/api/auth/request-password-reset', { email });
       
       Alert.alert(

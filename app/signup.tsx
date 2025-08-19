@@ -29,7 +29,7 @@ const SignUpScreen = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { signInWithGoogle, isAuthenticated } = useAuth();
-  const { theme } = useTheme(); // Use global theme context
+  const { theme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -48,7 +48,6 @@ const SignUpScreen = () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Note: The API call might need timezone, ensure your API handles this.
       await api.post('/api/auth/signup', { email, password });
       
       Alert.alert(
