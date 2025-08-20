@@ -1,13 +1,9 @@
 // src/constants/Colors.ts
-// Version: 1.2.0 (Added card property and explicit type)
+// Version: 1.2.0
 
-const tintColorLight = '#d96c00'; // Brand color for light theme from style.css
-const tintColorDark = '#ffa500';  // Brand color for dark theme from style.css
+const tintColorLight = '#d96c00';
+const tintColorDark = '#ffa500';
 
-// --- BẮT ĐẦU CẬP NHẬT ---
-
-// 1. Định nghĩa một Type rõ ràng cho bộ màu sắc
-// Điều này sẽ giúp TypeScript bắt lỗi và tự động gợi ý code tốt hơn
 export type Theme = {
   text: string;
   background: string;
@@ -23,9 +19,11 @@ export type Theme = {
   primary: string;
   textSecondary: string;
   border: string;
+  success: string;
+  danger: string;
+  warning: string;
 };
 
-// 2. Áp dụng Type đã định nghĩa và thêm giá trị cho 'card'
 export const Colors: { light: Theme; dark: Theme } = {
   light: {
     text: '#1c1c1c',
@@ -42,6 +40,9 @@ export const Colors: { light: Theme; dark: Theme } = {
     primary: tintColorLight,
     textSecondary: '#6c757d',
     border: '#dee2e6',
+    success: '#28a745',
+    danger: '#dc3545',
+    warning: '#ffc107',
   },
   dark: {
     text: '#e0e0e0',
@@ -58,7 +59,8 @@ export const Colors: { light: Theme; dark: Theme } = {
     primary: tintColorDark,
     textSecondary: '#adb5bd',
     border: '#495057',
+    success: '#28a745',
+    danger: '#dc3545',
+    warning: '#ffc107',
   },
 };
-
-// --- KẾT THÚC CẬP NHẬT ---

@@ -1,18 +1,17 @@
+// src/api/api.ts
+
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../config/apiConfig';
 
-// Create an axios instance with the base URL
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    // Add a custom header to identify requests from the mobile app
     'X-Client-Type': 'mobile',
   },
 });
 
-// Add a request interceptor to automatically add the Authorization token
 api.interceptors.request.use(
   async (config) => {
     const token = await SecureStore.getItemAsync('accessToken');
@@ -26,7 +25,6 @@ api.interceptors.request.use(
   }
 );
 
-// --- Response interceptor for token refreshing ---
 let isRefreshing = false;
 let failedQueue: any[] = [];
 
@@ -46,10 +44,8 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Check if the error is a 401 and it's not a retry request
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
-        // If we are already refreshing, queue the request
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })

@@ -1,5 +1,5 @@
 // app/(main)/settings/trustVerifier.tsx
-// Version: 1.1.0 (Replaced Alerts with Toasts)
+// Version: 1.1.0
 
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -14,7 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Toast from 'react-native-toast-message'; // FIX: Thêm import Toast
+import Toast from 'react-native-toast-message';
 import api from '../../../src/api/api';
 import { Colors } from '../../../src/constants/Colors';
 import { useAuth } from '../../../src/store/AuthContext';
@@ -34,7 +34,6 @@ export default function TrustVerifierScreen() {
 
   useEffect(() => {
     if (user) {
-      // FIX: Đảm bảo user.trust_verifier_email được load chính xác
       const initialEmail = user.trust_verifier_email || '';
       setVerifierEmail(initialEmail);
       setIsLoading(false);
@@ -48,7 +47,6 @@ export default function TrustVerifierScreen() {
 
   const handleSave = async () => {
     if (verifierEmail && !validateEmail(verifierEmail)) {
-      // FIX: Thay thế Alert bằng Toast cho lỗi email không hợp lệ
       Toast.show({
         type: 'error',
         text1: t('errors.title_error'),
@@ -68,8 +66,6 @@ export default function TrustVerifierScreen() {
       await api.put('/api/users/profile', payload);
       await refreshUser();
 
-      // FIX: Thay thế Alert bằng Toast cho thông báo thành công
-      // Dùng onHide để quay lại màn hình sau khi toast biến mất
       Toast.show({
         type: 'success',
         text1: t('trust_verifier_page.success_saved'),
@@ -77,7 +73,6 @@ export default function TrustVerifierScreen() {
       });
 
     } catch (error) {
-      // FIX: Thay thế Alert bằng Toast cho lỗi từ API
       Toast.show({
         type: 'error',
         text1: t('errors.title_error'),

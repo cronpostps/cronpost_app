@@ -1,27 +1,32 @@
 // app/(main)/settings/quotes/[folderId].tsx
-// Version 2.0.0 (Refactored UI/UX to be consistent with index.tsx)
+// Version 2.0.1
 
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import api from '../../../../src/api/api';
 import { Colors } from '../../../../src/constants/Colors';
 import { useTheme } from '../../../../src/store/ThemeContext';
 import { translateApiError } from '../../../../src/utils/errorTranslator';
+
+interface ContentItem {
+  id: string | number;
+  content: string;
+}
 
 export default function QuoteFolderDetailScreen() {
   const { t } = useTranslation();
@@ -33,17 +38,16 @@ export default function QuoteFolderDetailScreen() {
   const { folderId, folderKey } = useLocalSearchParams();
   const isOwner = useLocalSearchParams().isOwner === 'true';
 
-  const [contents, setContents] = useState([]);
+  const [contents, setContents] = useState<ContentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // State cho Modal Sửa/Thêm Content
   const [modalVisible, setModalVisible] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
-  const [selectedContent, setSelectedContent] = useState(null);
+  const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null);
   const [formContent, setFormContent] = useState('');
 
   const fetchContents = useCallback(async () => {
-    // Không set isLoading ở đây để FlatList's refreshing prop xử lý
     try {
       const response = await api.get(`/api/quotes/folders/${folderId}`);
       setContents(response.data.contents || []);
@@ -64,7 +68,7 @@ export default function QuoteFolderDetailScreen() {
     fetchContents();
   }, [fetchContents, navigation, folderKey, t]);
 
-  const openFormModal = (mode: 'add' | 'edit', item = null) => {
+  const openFormModal = (mode: 'add' | 'edit', item: ContentItem | null = null) => {
     setModalMode(mode);
     setSelectedContent(item);
     setFormContent(item?.content || '');
@@ -75,7 +79,7 @@ export default function QuoteFolderDetailScreen() {
     if (!formContent.trim()) return;
 
     const isAdding = modalMode === 'add';
-    const url = isAdding ? `/api/quotes/folders/${folderId}/contents` : `/api/quotes/contents/${selectedContent.id}`;
+    const url = isAdding ? `/api/quotes/folders/${folderId}/contents` : `/api/quotes/contents/${selectedContent?.id}`;
     const method = isAdding ? 'POST' : 'PUT';
     const payload = { content: formContent };
 
@@ -88,7 +92,7 @@ export default function QuoteFolderDetailScreen() {
     }
   };
 
-  const handleDelete = (contentId, contentText) => {
+  const handleDelete = (contentId: ContentItem['id'], contentText: ContentItem['content']) => {
     Alert.alert(
       t('quotes_page.confirm_delete_content_title'),
       t('quotes_page.confirm_delete_content_body'),
@@ -110,14 +114,13 @@ export default function QuoteFolderDetailScreen() {
     );
   };
 
-  // Render các nút hành động khi vuốt item
-  const renderRightActions = (item, close) => (
+  const renderRightActions = (item: ContentItem, close: () => void) => (
     <View style={styles.rightActionsContainer}>
       <TouchableOpacity
         style={[styles.rightAction, { backgroundColor: themeColors.primary }]}
         onPress={() => {
           openFormModal('edit', item);
-          close(); // Đóng swipeable item
+          close();
         }}>
         <Ionicons name="pencil-outline" size={24} color="#fff" />
       </TouchableOpacity>
@@ -132,19 +135,19 @@ export default function QuoteFolderDetailScreen() {
     </View>
   );
 
-  const renderItem = ({ item }) => {
-    // Chỉ render Swipeable nếu là chủ sở hữu
+  const renderItem = ({ item }: { item: ContentItem }) => {
     if (isOwner) {
-      let swipeableRef;
+      let swipeableRef: Swipeable | null = null;
       return (
-        <Swipeable ref={ref => (swipeableRef = ref)} renderRightActions={() => renderRightActions(item, () => swipeableRef.close())} overshootRight={false}>
-          <View style={styles.itemContainer}>
-            <Text style={styles.itemText}>{item.content}</Text>
-          </View>
+        <Swipeable 
+          ref={(ref: Swipeable | null) => { swipeableRef = ref; }} 
+          renderRightActions={() => renderRightActions(item, () => swipeableRef?.close())} 
+          overshootRight={false}
+        >
+          {/* ... */}
         </Swipeable>
       );
     }
-    // Render item bình thường nếu không phải chủ sở hữu
     return (
       <View style={styles.itemContainer}>
         <Text style={styles.itemText}>{item.content}</Text>

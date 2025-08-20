@@ -2,7 +2,7 @@
 // Version: 1.3.2 (TypeScript Fixed)
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useEffect, useMemo, useState } from 'react'; // FIX: Thêm useCallback
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -20,18 +20,14 @@ import {
 import Toast from 'react-native-toast-message';
 import api from '../../../src/api/api';
 import { Colors } from '../../../src/constants/Colors';
-import { useAuth } from '../../../src/store/AuthContext'; // FIX: Thêm useAuth
+import { useAuth } from '../../../src/store/AuthContext';
 import { useTheme } from '../../../src/store/ThemeContext';
 import { translateApiError } from '../../../src/utils/errorTranslator';
 
-// --- Types ---
-// FIX: Định nghĩa kiểu dữ liệu cho Timezone item
 interface TimezoneItem {
   name: string;
   offset: string;
 }
-
-// FIX: Định nghĩa kiểu dữ liệu cho User data
 interface UserData {
   email: string;
   user_name: string;
@@ -46,13 +42,12 @@ interface UserData {
   storage_limit_gb: number;
 }
 
-// --- Helper Functions ---
 const getGmtString = (timeZone: string) => {
   try {
     const date = new Date();
     const parts = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'longOffset' }).formatToParts(date);
     return parts.find(part => part.type === 'timeZoneName')?.value || 'GMT';
-  } catch { // FIX: Loại bỏ biến 'e' không sử dụng
+  } catch {
     return 'GMT'; 
   }
 };
@@ -63,7 +58,6 @@ const dateFormats = [
     { label: 'yyyy/mm/dd', value: 'yyyy/mm/dd' },
 ];
 
-// --- Components ---
 const ProgressBar = ({ value, max }: { value: number; max: number }) => {
   const { theme } = useTheme();
   const themeColors = Colors[theme];
@@ -84,28 +78,24 @@ const ProgressBar = ({ value, max }: { value: number; max: number }) => {
 const ProfileScreen = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { refreshUser } = useAuth(); // FIX: Lấy hàm refreshUser từ AuthContext
+  const { refreshUser } = useAuth();
   const themeColors = Colors[theme];
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  // FIX: Cung cấp kiểu dữ liệu UserData hoặc null cho state
   const [userData, setUserData] = useState<UserData | null>(null);
   const [formState, setFormState] = useState({ userName: '', timezone: '', dateFormat: 'dd/mm/yyyy' });
   
   const [isTimezoneModalVisible, setTimezoneModalVisible] = useState(false);
   const [isDateFormatModalVisible, setDateFormatModalVisible] = useState(false);
   const [timezoneSearch, setTimezoneSearch] = useState('');
-  // FIX: Cung cấp kiểu dữ liệu TimezoneItem[] cho state
   const [timezonesList, setTimezonesList] = useState<TimezoneItem[]>([]);
 
-  // FIX: Thêm kiểu dữ liệu cho tham số của filter
   const filteredTimezones = useMemo(() => {
     if (!timezoneSearch) return timezonesList;
     return timezonesList.filter((tz: TimezoneItem) => tz.name.toLowerCase().includes(timezoneSearch.toLowerCase()));
   }, [timezoneSearch, timezonesList]);
 
-  // FIX: Bọc hàm trong useCallback để tối ưu và sửa lỗi dependency
   const fetchInitialData = useCallback(async () => {
     try {
       const [userResponse, timezonesResponse] = await Promise.all([
@@ -120,7 +110,6 @@ const ProfileScreen = () => {
         dateFormat: userResponse.data.date_format || 'dd/mm/yyyy',
       });
       
-      // FIX: Thêm kiểu dữ liệu cho các tham số
       const formattedTimezones = timezonesResponse.data.map((tz: string): TimezoneItem => ({
           name: tz,
           offset: getGmtString(tz),
@@ -140,11 +129,11 @@ const ProfileScreen = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [t]); // t là dependency nếu bạn dùng nó trong hàm (dù ở đây là trong catch)
+  }, [t]);
 
   useEffect(() => {
     fetchInitialData();
-  }, [fetchInitialData]); // FIX: Thêm fetchInitialData vào dependency array
+  }, [fetchInitialData]);
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
@@ -155,7 +144,7 @@ const ProfileScreen = () => {
         date_format: formState.dateFormat,
       };
       await api.put('/api/users/profile', payload);
-      await refreshUser(); // Hàm này giờ đã được định nghĩa
+      await refreshUser();
 
       Toast.show({
         type: 'success',

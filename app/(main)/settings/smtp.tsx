@@ -1,5 +1,5 @@
 // app/(main)/settings/smtp.tsx
-// Version: 1.3.0 (Type and Hook Fixes)
+// Version: 1.3.0
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -25,7 +25,6 @@ import { useAuth } from '../../../src/store/AuthContext';
 import { useTheme } from '../../../src/store/ThemeContext';
 import { translateApiError } from '../../../src/utils/errorTranslator';
 
-// FIX: Định nghĩa kiểu dữ liệu cho cài đặt SMTP
 interface SmtpSettings {
   smtp_server: string;
   smtp_port: number;
@@ -41,7 +40,6 @@ const SmtpScreen = () => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  // FIX: Cung cấp kiểu dữ liệu cho state
   const [smtpSettings, setSmtpSettings] = useState<SmtpSettings | null>(null);
   const [formState, setFormState] = useState({
     server: '',
@@ -53,8 +51,6 @@ const SmtpScreen = () => {
   const [isPortModalVisible, setPortModalVisible] = useState(false);
   const [screenUser, setScreenUser] = useState(user);
   const isPremium = screenUser?.membership_type === 'premium';
-
-  // FIX: Bọc hàm trong useCallback để ổn định nó
   const fetchInitialData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -87,7 +83,6 @@ const SmtpScreen = () => {
     }
   }, [t]);
 
-  // FIX: Thêm dependency cho useEffect
   useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);

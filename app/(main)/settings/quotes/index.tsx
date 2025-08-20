@@ -1,5 +1,5 @@
 // app/(main)/settings/quotes/index.tsx
-// Version 2.0.0 (Added Discover Public Folders feature)
+// Version 2.0.2
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -26,24 +26,43 @@ import { Colors } from '../../../../src/constants/Colors';
 import { useTheme } from '../../../../src/store/ThemeContext';
 import { translateApiError } from '../../../../src/utils/errorTranslator';
 
+interface Folder {
+  id: string | number;
+  folder_key: string;
+  description: string | null;
+  is_public: boolean;
+  content_count: number;
+}
+
+interface DiscoverFolder extends Folder {
+  author_key: string;
+  subscribed: boolean;
+}
+
+interface FolderSection {
+  title: string;
+  data: Folder[];
+  type: 'system' | 'user' | 'subscribed';
+}
+
 export default function QuotesScreen() {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const themeColors = Colors[theme];
   const router = useRouter();
 
-  const [sections, setSections] = useState([]);
+  const [sections, setSections] = useState<FolderSection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // State cho Modal Sửa/Thêm Folder
   const [formModalVisible, setFormModalVisible] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
-  const [selectedFolder, setSelectedFolder] = useState(null);
+  const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
   const [formState, setFormState] = useState({ key: '', description: '', isPublic: false });
 
   // State cho Modal Khám phá
   const [discoverModalVisible, setDiscoverModalVisible] = useState(false);
-  const [discoverResults, setDiscoverResults] = useState([]);
+  const [discoverResults, setDiscoverResults] = useState<DiscoverFolder[]>([]);
   const [discoverSearchTerm, setDiscoverSearchTerm] = useState('');
   const [isDiscoverLoading, setIsDiscoverLoading] = useState(false);
   const [discoverPage, setDiscoverPage] = useState(1);
@@ -51,18 +70,17 @@ export default function QuotesScreen() {
 
   const fetchFolders = useCallback(async () => {
     try {
-      // Chỉ set loading cho lần tải đầu tiên
       if (sections.length === 0) setIsLoading(true);
       const response = await api.get('/api/quotes/folders');
       const { system_folders, user_folders, subscribed_folders } = response.data;
-
-      const newSections = [
-        { title: t('quotes_page.system_folders_header'), data: system_folders, type: 'system' },
-        { title: t('quotes_page.user_folders_header'), data: user_folders, type: 'user' },
-        { title: t('quotes_page.subscribed_folders_header'), data: subscribed_folders, type: 'subscribed' },
-      ].filter(section => section.data && section.data.length > 0);
-
+      const allSections: FolderSection[] = [
+          { title: t('quotes_page.system_folders_header'), data: system_folders, type: 'system' },
+          { title: t('quotes_page.user_folders_header'), data: user_folders, type: 'user' },
+          { title: t('quotes_page.subscribed_folders_header'), data: subscribed_folders, type: 'subscribed' },
+      ];
+      const newSections = allSections.filter(section => section.data && section.data.length > 0);
       setSections(newSections);
+
     } catch (error) {
       Alert.alert('Error', translateApiError(error));
     } finally {
@@ -75,7 +93,7 @@ export default function QuotesScreen() {
   }, [fetchFolders]);
 
   // --- Logic cho Thêm/Sửa Folder ---
-  const openFormModal = (mode: 'add' | 'edit', folder = null) => {
+  const openFormModal = (mode: 'add' | 'edit', folder: Folder | null = null) => {
     setModalMode(mode);
     setSelectedFolder(folder);
     setFormState({
@@ -87,7 +105,8 @@ export default function QuotesScreen() {
   };
 
   const handleModalSubmit = async () => {
-    const url = modalMode === 'add' ? '/api/quotes/folders' : `/api/quotes/folders/${selectedFolder.id}`;
+    if (modalMode === 'edit' && !selectedFolder) return;
+    const url = modalMode === 'add' ? '/api/quotes/folders' : `/api/quotes/folders/${selectedFolder?.id}`;
     const method = modalMode === 'add' ? 'POST' : 'PUT';
     const payload = { folder_key: formState.key, description: formState.description, is_public: formState.isPublic };
 
@@ -100,7 +119,7 @@ export default function QuotesScreen() {
     }
   };
 
-  const handleDelete = (folder) => {
+  const handleDelete = (folder: Folder) => {
     Alert.alert(
       t('quotes_page.confirm_delete_folder_title'),
       t('quotes_page.confirm_delete_folder_body', { folder_key: folder.folder_key }),
@@ -118,26 +137,30 @@ export default function QuotesScreen() {
     );
   };
 
-  const handleUnsubscribe = (folder) => {
-    Alert.alert(
-      t('quotes_page.confirm_remove_subscription_title'),
-      t('quotes_page.confirm_remove_subscription_body', { folder_key: folder.folder_key }),
-      [
-        { text: t('settings_page.btn_cancel'), style: 'cancel' },
-        {
-          text: t('settings_page.btn_confirm'),
-          style: 'destructive',
-          onPress: async () => {
-            await api.delete(`/api/quotes/folders/subscribe/${folder.id}`);
-            await fetchFolders();
+  const handleUnsubscribe = (folder: Folder) => {
+      Alert.alert(
+        t('quotes_page.confirm_remove_subscription_title'),
+        t('quotes_page.confirm_remove_subscription_body', { folder_key: folder.folder_key }),
+        [
+          { text: t('settings_page.btn_cancel'), style: 'cancel' },
+          {
+            text: t('settings_page.btn_confirm'),
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await api.delete(`/api/quotes/folders/subscribe/${folder.id}`);
+                await fetchFolders();
+              } catch (error) {
+                Alert.alert('Error', translateApiError(error));
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
   };
   
   // --- Logic cho Khám phá Folder ---
-  const fetchDiscoveredFolders = async (searchTerm, page = 1, isNewSearch = false) => {
+  const fetchDiscoveredFolders = async (searchTerm: string, page = 1, isNewSearch = false) => {
     if (isDiscoverLoading) return;
     setIsDiscoverLoading(true);
     try {
@@ -157,7 +180,7 @@ export default function QuotesScreen() {
     fetchDiscoveredFolders(discoverSearchTerm, 1, true);
   };
 
-  const handleSubscribe = async (folderToSubscribe) => {
+  const handleSubscribe = async (folderToSubscribe: DiscoverFolder) => {
     try {
       await api.post('/api/quotes/folders/subscribe', { folder_id: folderToSubscribe.id });
       // Cập nhật UI ngay lập tức để phản hồi
@@ -177,35 +200,41 @@ export default function QuotesScreen() {
     }
   };
 
-  // --- Render components ---
-  const handleItemPress = (item, sectionType) => {
+  const handleItemPress = (item: Folder, sectionType: FolderSection['type']) => {
     const isOwner = sectionType === 'user';
     router.push({
-      pathname: `/settings/quotes/${item.id}`,
-      params: { isOwner: isOwner ? 'true' : 'false', folderKey: item.folder_key },
+      pathname: '/settings/quotes/[folderId]',
+      params: { 
+        folderId: item.id, 
+        isOwner: isOwner ? 'true' : 'false', 
+        folderKey: item.folder_key 
+      },
     });
   };
 
-  const renderRightActions = (item, sectionType, close) => (
+  const renderRightActions = (item: Folder, sectionType: string, close: () => void) => (
     <View style={styles.rightActionsContainer}>
       {sectionType === 'user' && (
         <TouchableOpacity style={[styles.rightAction, { backgroundColor: '#007bff' }]} onPress={() => { openFormModal('edit', item); close(); }}>
           <Ionicons name="pencil-outline" size={22} color="#fff" />
         </TouchableOpacity>
       )}
-      <TouchableOpacity
-        style={[styles.rightAction, { backgroundColor: '#dc3545' }]}
-        onPress={() => {
-          sectionType === 'user' ? handleDelete(item) : handleUnsubscribe(item);
-          close();
-        }}>
+    <TouchableOpacity
+      style={[styles.rightAction, { backgroundColor: '#dc3545' }]}
+      onPress={() => {
+        if (sectionType === 'user') {
+          handleDelete(item);
+        } else {
+          handleUnsubscribe(item);
+        }
+        close();
+      }}>
         <Ionicons name={sectionType === 'user' ? 'trash-outline' : 'remove-circle-outline'} size={22} color="#fff" />
       </TouchableOpacity>
     </View>
   );
 
-  const renderItem = ({ item, section }) => {
-      // Tái sử dụng JSX cho nội dung của một item
+  const renderItem = ({ item, section }: { item: Folder; section: FolderSection }) => {
       const itemContent = (
         <>
           <Ionicons name="folder-outline" size={24} color={themeColors.tint} />
@@ -219,8 +248,7 @@ export default function QuotesScreen() {
           <Ionicons name="chevron-forward" size={20} color={themeColors.icon} />
         </>
       );
-
-      // System folders không có hành động vuốt
+      
       if (section.type === 'system') {
         return (
           <TouchableOpacity style={styles.itemContainer} onPress={() => handleItemPress(item, section.type)}>
@@ -229,12 +257,11 @@ export default function QuotesScreen() {
         );
       }
 
-      // User và Subscribed folders có hành động vuốt
-      let swipeableRef;
+      let swipeableRef: Swipeable | null = null;
       return (
         <Swipeable
-          ref={(ref) => (swipeableRef = ref)}
-          renderRightActions={() => renderRightActions(item, section.type, () => swipeableRef.close())}
+          ref={(ref: Swipeable | null) => { swipeableRef = ref; }}
+          renderRightActions={() => renderRightActions(item, section.type, () => swipeableRef?.close())}
           overshootRight={false}
         >
           <TouchableOpacity style={styles.itemContainer} onPress={() => handleItemPress(item, section.type)}>
@@ -247,13 +274,11 @@ export default function QuotesScreen() {
   const renderListFooter = () => (
     <View style={styles.footerContainer}>
         <TouchableOpacity style={styles.discoverButton} onPress={() => {
-            // Reset state trước khi mở
             setDiscoverResults([]);
             setDiscoverSearchTerm('');
             setDiscoverPage(1);
             setDiscoverTotalPages(1);
             setDiscoverModalVisible(true);
-            // Tải 10 item đầu tiên
             fetchDiscoveredFolders('', 1, true);
         }}>
             <Ionicons name="search-circle-outline" size={22} color={themeColors.tint} />
@@ -309,9 +334,9 @@ export default function QuotesScreen() {
       <SafeAreaView style={styles.container}>
         <SectionList
           sections={sections}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
-          renderSectionHeader={({ section }) => <Text style={styles.sectionHeader}>{section.title}</Text>}
+          renderSectionHeader={({ section }: { section: FolderSection }) => <Text style={styles.sectionHeader}>{section.title}</Text>}
           stickySectionHeadersEnabled
           ListEmptyComponent={<View style={{flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 50}}><Text style={{color: themeColors.icon}}>No folders found.</Text></View>}
           ListFooterComponent={renderListFooter}
@@ -323,13 +348,25 @@ export default function QuotesScreen() {
           <Ionicons name="add" size={30} color="#fff" />
         </TouchableOpacity>
 
-        {/* Modal Thêm/Sửa Folder */}
         <Modal visible={formModalVisible} transparent={true} animationType="fade" onRequestClose={() => setFormModalVisible(false)}>
             <View style={styles.modalOverlay}>
                 <View style={styles.formModalContent}>
                     <Text style={styles.modalHeader}>{t(modalMode === 'add' ? 'quotes_page.modal_create_folder_title' : 'quotes_page.modal_edit_folder_title')}</Text>
-                    <TextInput style={styles.input} placeholder={t('quotes_page.label_folder_key')} value={formState.key} onChangeText={text => setFormState({...formState, key: text})} />
-                    <TextInput style={styles.input} placeholder={t('quotes_page.label_description')} value={formState.description} onChangeText={text => setFormState({...formState, description: text})} multiline />
+                    <TextInput 
+                        style={styles.input} 
+                        placeholder={t('quotes_page.label_folder_key')} 
+                        value={formState.key} 
+                        onChangeText={text => setFormState({...formState, key: text})} 
+                        placeholderTextColor={themeColors.icon} 
+                    />
+                    <TextInput 
+                        style={styles.input} 
+                        placeholder={t('quotes_page.label_description')} 
+                        value={formState.description} 
+                        onChangeText={text => setFormState({...formState, description: text})} 
+                        multiline 
+                        placeholderTextColor={themeColors.icon} 
+                    />
                     <View style={styles.switchContainer}>
                         <Text style={{color: themeColors.text}}>{t('quotes_page.label_is_public')}</Text>
                         <Switch trackColor={{ false: "#767577", true: themeColors.tint }} thumbColor={"#f4f3f4"} onValueChange={val => setFormState({...formState, isPublic: val})} value={formState.isPublic} />
@@ -354,7 +391,15 @@ export default function QuotesScreen() {
                     </View>
                     
                     <View style={styles.searchInputContainer}>
-                        <TextInput style={styles.searchInput} placeholder={t('quotes_page.search_placeholder')} value={discoverSearchTerm} onChangeText={setDiscoverSearchTerm} onSubmitEditing={handleSearch} returnKeyType="search" />
+                        <TextInput 
+                            style={styles.searchInput} 
+                            placeholder={t('quotes_page.search_placeholder')}
+                            value={discoverSearchTerm} 
+                            onChangeText={setDiscoverSearchTerm} 
+                            onSubmitEditing={handleSearch} 
+                            returnKeyType="search" 
+                            placeholderTextColor={themeColors.icon}
+                        />
                         <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
                             <Ionicons name="search" size={24} color="#fff" />
                         </TouchableOpacity>
@@ -362,8 +407,8 @@ export default function QuotesScreen() {
 
                     <FlatList
                         data={discoverResults}
-                        keyExtractor={item => item.id}
-                        renderItem={({item}) => (
+                        keyExtractor={item => item.id.toString()}
+                        renderItem={({item}: {item: DiscoverFolder}) => (
                             <View style={styles.discoverItem}>
                                 <View style={styles.discoverItemInfo}>
                                     <Text style={styles.itemLabel}>{item.folder_key}</Text>
@@ -388,7 +433,7 @@ export default function QuotesScreen() {
                         }}
                         onEndReachedThreshold={0.5}
                         ListEmptyComponent={<View style={styles.discoverListFooter}><Text style={{color: themeColors.icon}}>{t('quotes_page.discover_results_empty')}</Text></View>}
-                        ListFooterComponent={isDiscoverLoading && <ActivityIndicator style={{marginVertical: 20}} color={themeColors.tint}/>}
+                        ListFooterComponent={isDiscoverLoading ? <ActivityIndicator style={{marginVertical: 20}} color={themeColors.tint}/> : null}
                     />
                 </View>
             </View>

@@ -14,8 +14,7 @@ const TermsScreen = () => {
   const { theme } = useTheme();
   const themeColors = Colors[theme];
   const tabBarHeight = useBottomTabBarHeight();
-
-  // Get the HTML content from translation file
+  
   const contentHtml = t('terms_page.content');
 
   const htmlDoc = `

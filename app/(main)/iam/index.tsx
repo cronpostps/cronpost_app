@@ -60,12 +60,12 @@ export default function IamScreen() {
   const userDayjsFormat = useMemo(() => {
     if (user?.date_format === 'mm/dd/yyyy') return 'MM/DD/YYYY';
     if (user?.date_format === 'yyyy/mm/dd') return 'YYYY/MM/DD';
-    return 'DD/MM/YYYY'; // Mặc định
+    return 'DD/MM/YYYY';
   }, [user?.date_format]);
   const [activeTab, setActiveTab] = useState<IamTab>('inbox');
-  const [allMessages, setAllMessages] = useState<Message[]>([]); // <-- Mới: Lưu danh sách gốc
-  const [filteredMessages, setFilteredMessages] = useState<Message[]>([]); // <-- Đổi tên từ messages
-  const [searchQuery, setSearchQuery] = useState(''); // <-- Mới: Lưu từ khóa tìm kiếm
+  const [allMessages, setAllMessages] = useState<Message[]>([]);
+  const [filteredMessages, setFilteredMessages] = useState<Message[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,7 +95,6 @@ export default function IamScreen() {
 
   const fetchMessages = useCallback(async () => {
     if (!user) return;
-    // Don't set loading to true on refresh to avoid full-screen spinner
     if (!isRefreshing) {
       setIsLoading(true);
     }
@@ -136,10 +135,8 @@ export default function IamScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      // Hàm này sẽ chạy mỗi khi màn hình được focus (hiển thị)
       if (user) {
         fetchMessages();
-        // Luôn cập nhật lại unread count khi vào màn hình Inbox
         if (activeTab === 'inbox') {
           fetchUnreadCount();
         }
@@ -164,7 +161,6 @@ export default function IamScreen() {
 
     if (activeTab === 'sent' && (item as GroupedMessage).all_receivers) {
       params.all_receivers_json = JSON.stringify((item as GroupedMessage).all_receivers);
-      // Gửi kèm danh sách ID của tất cả tin nhắn trong nhóm
       params.all_message_ids_json = JSON.stringify((item as GroupedMessage).all_message_ids);
     }
     
@@ -175,7 +171,6 @@ export default function IamScreen() {
   };
   
   const handleCloseSwipeable = (id: string) => {
-    // Placeholder to close other rows if needed in the future
   };
 
   const handleDeleteMessage = async (item: Message) => {
@@ -209,11 +204,9 @@ export default function IamScreen() {
 
 const toggleSelectMode = (item?: Message) => {
     if (isSelectMode) {
-      // Exiting select mode
       setIsSelectMode(false);
       setSelectedMessageIds(new Set());
     } else if (item) {
-      // Entering select mode
       setIsSelectMode(true);
       setSelectedMessageIds(new Set([item.id]));
     }
@@ -290,7 +283,7 @@ const handleMarkSelectedAsRead = async () => {
       );
       fetchUnreadCount();
     } catch (err) {
-      setAllMessages(originalMessages); // Revert on failure
+      setAllMessages(originalMessages);
       Alert.alert(t('errors.title_error'), translateApiError(err));
     }
   };
@@ -324,7 +317,7 @@ const handleMarkSelectedAsRead = async () => {
       <Swipeable 
         renderRightActions={renderRightActions} 
         onSwipeableWillOpen={() => handleCloseSwipeable(item.id)}
-        enabled={!isSelectMode} // Vô hiệu hóa vuốt khi đang ở chế độ chọn
+        enabled={!isSelectMode}
       >
         <TouchableOpacity
           style={[styles.messageItemContainer]}
@@ -391,7 +384,7 @@ const handleMarkSelectedAsRead = async () => {
       ]}
       onPress={() => {
         setActiveTab(tabName);
-        setSearchQuery(''); // Xóa tìm kiếm khi chuyển tab
+        setSearchQuery('');
       }}>
       <Text
         style={[styles.tabText, activeTab === tabName && styles.activeTabText]}>
@@ -508,7 +501,7 @@ const handleMarkSelectedAsRead = async () => {
       backgroundColor: themeColors.card,
       borderBottomWidth: 1,
       borderBottomColor: themeColors.inputBorder,
-      height: 58, // Match tab container height
+      height: 58,
     },
     selectionCountText: {
       fontSize: 18,

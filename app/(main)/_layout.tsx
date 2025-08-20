@@ -1,4 +1,5 @@
 // app/(main)/_layout.tsx
+// version 1.0.0
 
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs, useRouter } from 'expo-router';
@@ -15,10 +16,8 @@ export default function MainTabLayout() {
   const themeColors = Colors[theme];
   const { t } = useTranslation();
 
-  // --- START: LOGIC MỚI ĐỂ XỬ LÝ FNS ---
   const { user } = useAuth();
   const router = useRouter();
-  // --- END: LOGIC MỚI ĐỂ XỬ LÝ FNS ---
 
   return (
     <Tabs
@@ -28,6 +27,7 @@ export default function MainTabLayout() {
         tabBarStyle: {
           backgroundColor: themeColors.card,
           borderTopColor: themeColors.inputBorder,
+          height: 50,
         },
         headerShown: false,
       }}
@@ -57,16 +57,11 @@ export default function MainTabLayout() {
             />
           ),
         }}
-        // --- START: LOGIC MỚI ĐỂ XỬ LÝ FNS ---
         listeners={{
           tabPress: (e) => {
-            // Kiểm tra trạng thái FNS
             if (user?.account_status === 'FNS') {
-              // Ngăn chặn hành vi điều hướng mặc định
               e.preventDefault();
-              // Điều hướng đến dashboard
               router.push('/(main)/dashboard');
-              // Hiển thị thông báo Toast
               Toast.show({
                 type: 'info',
                 text1: t('fns_page.card_title'),
@@ -76,7 +71,6 @@ export default function MainTabLayout() {
             }
           },
         }}
-        // --- END: LOGIC MỚI ĐỂ XỬ LÝ FNS ---
       />
       <Tabs.Screen
         name="iam"

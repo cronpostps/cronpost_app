@@ -34,7 +34,6 @@ import { useAuth } from '../store/AuthContext';
 import { useTheme } from '../store/ThemeContext';
 import { translateApiError } from '../utils/errorTranslator';
 
-// --- Interfaces & Types ---
 export interface MessageComposerRef {
   getData: () => Promise<MessageData>;
   hasUnsavedChanges: () => Promise<boolean>;
@@ -108,8 +107,6 @@ interface QuotePickerModalProps extends ModalProps {
     onSelect: (folder: QuoteFolder) => void;
 }
 
-
-// --- Main Component ---
 const MessageComposer = forwardRef<MessageComposerRef, MessageComposerProps>((props, ref) => {
   const {
       initialData,
@@ -126,16 +123,14 @@ const MessageComposer = forwardRef<MessageComposerRef, MessageComposerProps>((pr
   const { user } = useAuth();
 
   const dynamicHeaderTitle = React.useMemo(() => {
-    const baseTitle = "✏️"; // "Compose"
+    const baseTitle = "✏️";
     const details = [];
 
-    // Thêm tiền tố (SCM, UCM) nếu có
     if (buttonSet === 'scm') details.push('SCM');
     if (buttonSet === 'ucm') {
         details.push(messageType ? `${messageType}` : 'UCM');
     }
 
-    // Thêm phương thức gửi
     switch (sendingMethod) {
       case 'in_app_messaging':
         details.push(t('scm_page.method_iam'));
@@ -145,7 +140,6 @@ const MessageComposer = forwardRef<MessageComposerRef, MessageComposerProps>((pr
         break;
       case 'user_email':
         if (user?.is_smtp_configured && user.smtp_sender_email) {
-          // Định dạng đặc biệt cho SMTP
           details.push(`SMTP (${user.smtp_sender_email})`);
         } else {
           details.push(t('scm_page.method_smtp'));
@@ -153,31 +147,29 @@ const MessageComposer = forwardRef<MessageComposerRef, MessageComposerProps>((pr
         break;
     }
 
-    // Kết hợp lại thành chuỗi cuối cùng
     return `${baseTitle} (${details.join(' : ')})`;
   }, [buttonSet, sendingMethod, user, t, messageType]);
 
   const richText = useRef<RichEditor>(null);
-  
+  const recipientScrollViewRef = useRef<ScrollView>(null);
+  const recipientInputRef = useRef<TextInput>(null);
+  const handleRecipientAreaPress = () => {
+    recipientScrollViewRef.current?.scrollToEnd({ animated: true });
+    recipientInputRef.current?.focus();
+  };
+
   const recipientLimit = React.useMemo(() => {
     if (!user) {
-      // Giá trị mặc định an toàn nếu chưa có thông tin user
       return 1;
     }
-    // Lấy hạng thành viên của user
     const membership = user.membership_type || 'free';
-    
-    // Tự động tạo ra key để lấy đúng giá trị giới hạn từ user object
-    // Ví dụ: 'limit_recipients_cronpost_email_premium'
     const limitKey = `limit_recipients_${sendingMethod}_${membership}`;
-
-    // Lấy giá trị giới hạn từ user object và trả về, có giá trị dự phòng là 1
     return (user as any)[limitKey] || 1;
   }, [user, sendingMethod]);
 
-  // --- State Management ---
   const [recipients, setRecipients] = useState<string[]>(initialData?.recipients || []);
   const [recipientInput, setRecipientInput] = useState('');
+  const [isLastRecipientHighlighted, setIsLastRecipientHighlighted] = useState(false);
   const [subject, setSubject] = useState(initialData?.subject || '');
   const [attachments, setAttachments] = useState<AttachmentFile[]>(initialData?.attachments || []);
   const [isSending, setIsSending] = useState(false);
@@ -187,7 +179,6 @@ const MessageComposer = forwardRef<MessageComposerRef, MessageComposerProps>((pr
   const [groupedQuoteFolders, setGroupedQuoteFolders] = useState<GroupedQuoteFolders[]>([]);
   const [isLoading, setIsLoading] = useState({ contacts: false, files: false, quotes: false });
 
-  // Thêm hook này để component cha có thể gọi hàm getData()
   useImperativeHandle(ref, () => ({
     getData: async (): Promise<MessageData> => {
         let content = await richText.current?.getContentHtml() || '';
@@ -205,19 +196,15 @@ const MessageComposer = forwardRef<MessageComposerRef, MessageComposerProps>((pr
     hasUnsavedChanges: async (): Promise<boolean> => {
         const currentContent = await richText.current?.getContentHtml() || '';
 
-        // 1. So sánh Recipients (không phân biệt thứ tự)
         const initialRecipients = initialData?.recipients || [];
         const recipientsChanged = recipients.sort().join(',') !== initialRecipients.sort().join(',');
 
-        // 2. So sánh Subject
         const initialSubject = initialData?.subject || '';
         const subjectChanged = subject !== initialSubject;
 
-        // 3. So sánh Content
         const initialContent = initialData?.content || '';
         const contentChanged = currentContent !== initialContent;
 
-        // 4. So sánh Attachments (dựa trên ID, không phân biệt thứ tự)
         const initialAttachments = initialData?.attachments || [];
         const currentAttachmentIds = attachments.map(f => f.id).sort().join(',');
         const initialAttachmentIds = initialAttachments.map(f => f.id).sort().join(',');
@@ -227,13 +214,6 @@ const MessageComposer = forwardRef<MessageComposerRef, MessageComposerProps>((pr
     },
   }));
 
-  // useEffect(() => {
-  //   if (initialData?.content && richText.current) {
-  //       richText.current.setContentHTML(initialData.content);
-  //   }
-  // }, [initialData?.content]);
-
-    // --- State & Logic for User Limits ---
   const [contentCharCount, setContentCharCount] = useState(0);
 
   const limits = useMemo(() => {
@@ -256,8 +236,23 @@ const MessageComposer = forwardRef<MessageComposerRef, MessageComposerProps>((pr
     };
   }, [user, sendingMethod]);
 
-  // --- Recipient Pillbox Logic ---
+  const handleRecipientKeyPress = ({ nativeEvent }: { nativeEvent: { key: string } }) => {
+    if (nativeEvent.key === 'Backspace' && recipientInput === '' && recipients.length > 0) {
+      if (isLastRecipientHighlighted) {
+        removeRecipient(recipients.length - 1);
+        setIsLastRecipientHighlighted(false);
+      } else {
+        setIsLastRecipientHighlighted(true);
+      }
+    } else {
+      setIsLastRecipientHighlighted(false);
+    }
+  };  
+
   const handleRecipientInputChange = (text: string) => {
+    if (isLastRecipientHighlighted) {
+      setIsLastRecipientHighlighted(false);
+    }  
     if (text.endsWith(',') || text.endsWith(' ')) {
       const newEmail = text.slice(0, -1).trim();
       if (newEmail) addRecipient(newEmail);
@@ -288,7 +283,7 @@ const addRecipient = (email: string) => {
   };
 
   const handleRecipientInputEnd = () => {
-    if (recipientInput) { // Chỉ xử lý nếu có nội dung trong ô input
+    if (recipientInput) {
       addRecipient(recipientInput);
       setRecipientInput('');
     }
@@ -306,7 +301,6 @@ const addRecipient = (email: string) => {
     onNavigateToSchedule(data);
   };
 
-  // --- Data Fetching for Modals ---
   const fetchContacts = useCallback(async () => {
     setIsLoading(prev => ({ ...prev, contacts: true }));
     try {
@@ -374,8 +368,6 @@ const addRecipient = (email: string) => {
     setContentCharCount(text.length);
   };
 
-
-  // --- Modal Selection Handlers ---
   const handleSelectContact = (email: string) => {
     addRecipient(email);
     setModalVisible(prev => ({...prev, contacts: false}));
@@ -402,8 +394,6 @@ const addRecipient = (email: string) => {
       setAttachments(prev => prev.filter(f => f.id !== fileId));
   };
 
-
-  // --- Main Action Handler ---
   const handleAction = async (action: ActionType) => {
     if (contentCharCount > limits.content) {
       return Alert.alert(t('errors.title_error'), t('errors.ERR_VALIDATION_CONTENT_TOO_LONG', { limit: limits.content }));
@@ -438,7 +428,6 @@ const addRecipient = (email: string) => {
     }
   };
   
-  // --- UI ---
   const s = styles(themeColors);
   return (
     <SafeAreaView style={s.container}>
@@ -461,24 +450,35 @@ const addRecipient = (email: string) => {
             )}
         </View>
 
-        <TouchableOpacity style={s.inputContainer} activeOpacity={1} onPress={() => Keyboard.dismiss()}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.pillScrollView}>
-            {recipients.map((email, index) => (
-              <View key={index} style={s.pill}>
-                <Text style={s.pillText}>{email}</Text>
+        <TouchableOpacity style={s.inputContainer} activeOpacity={1} onPress={handleRecipientAreaPress}>
+          <ScrollView 
+            ref={recipientScrollViewRef}
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={s.pillScrollView}
+            keyboardShouldPersistTaps="handled"
+          >
+            {recipients.map((email, index) => {
+              const isLastAndHighlighted = isLastRecipientHighlighted && index === recipients.length - 1;
+              return (
+              <View key={index} style={[s.pill, isLastAndHighlighted && s.highlightedPill]}>
+                <Text style={[s.pillText, isLastAndHighlighted && s.highlightedPillText]}>{email}</Text>
                 <TouchableOpacity onPress={() => removeRecipient(index)}>
-                  <Ionicons name="close-circle" size={16} color={themeColors.background} />
+                  <Ionicons name="close-circle" size={16} color={isLastAndHighlighted ? themeColors.tint : themeColors.background}/>
                 </TouchableOpacity>
               </View>
-            ))}
+             );
+            })}
             <TextInput
+              ref={recipientInputRef}
               style={s.recipientTextInput}
               placeholder={recipients.length === 0 ? t('editor_component.label_recipients') : ''}
               placeholderTextColor={themeColors.icon}
               value={recipientInput}
               onChangeText={handleRecipientInputChange}
-              onSubmitEditing={handleRecipientInputEnd} // SỬA LẠI DÒNG NÀY
-              onBlur={handleRecipientInputEnd} // THÊM DÒNG NÀY
+              onKeyPress={handleRecipientKeyPress}
+              onSubmitEditing={handleRecipientInputEnd}
+              onBlur={handleRecipientInputEnd}
               editable={!isSending && recipients.length < recipientLimit}
               autoCapitalize="none" keyboardType="email-address"
             />
@@ -572,7 +572,6 @@ const addRecipient = (email: string) => {
 
 MessageComposer.displayName = 'MessageComposer';
 
-// --- Sub-components for Modals ---
 const ContactPickerModal = ({ visible, onClose, contacts, isLoading, onSelect, t, themeColors }: ContactPickerModalProps) => {
     const s = modalStyles(themeColors);
     const [searchQuery, setSearchQuery] = useState('');
@@ -720,7 +719,6 @@ const QuotePickerModal = ({ visible, onClose, groupedFolders, isLoading, onSelec
     );
 };
 
-// --- StyleSheet Factory ---
 const styles = (themeColors: Theme) => StyleSheet.create({
     container: { flex: 1, backgroundColor: themeColors.background },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: themeColors.inputBorder, backgroundColor: themeColors.card },
@@ -732,6 +730,14 @@ const styles = (themeColors: Theme) => StyleSheet.create({
     pillScrollView: { alignItems: 'center', flexGrow: 1 },
     pill: { flexDirection: 'row', alignItems: 'center', backgroundColor: themeColors.tint, borderRadius: 15, paddingVertical: 4, paddingHorizontal: 10, marginRight: 5, marginVertical: 5 },
     pillText: { color: themeColors.background, marginRight: 5 },
+    highlightedPill: {
+      backgroundColor: themeColors.background,
+      borderColor: themeColors.tint,
+      borderWidth: 2,
+    },
+    highlightedPillText: {
+      color: themeColors.tint,
+    },
     richEditorToolbar: { 
       backgroundColor: themeColors.background
     },

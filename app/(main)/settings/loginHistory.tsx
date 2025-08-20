@@ -5,18 +5,17 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    FlatList,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  FlatList,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import api from '../../../src/api/api';
 import { Colors } from '../../../src/constants/Colors';
 import { useTheme } from '../../../src/store/ThemeContext';
 
-// Định nghĩa kiểu dữ liệu cho một entry trong lịch sử
 type HistoryItem = {
   id: string;
   device_os: string;
@@ -46,7 +45,7 @@ export default function LoginHistoryScreen() {
       }
     };
     fetchHistory();
-  }, []);
+  }, [t]);
 
   const getDeviceIcon = (os: string) => {
     if (!os) return 'help-circle-outline';
@@ -54,7 +53,7 @@ export default function LoginHistoryScreen() {
     if (lowerOs.includes('android')) return 'logo-android';
     if (lowerOs.includes('ios') || lowerOs.includes('mac')) return 'logo-apple';
     if (lowerOs.includes('windows')) return 'logo-windows';
-    if (lowerOs.includes('linux')) return 'logo-tux'; // Cần cài đặt icon pack nếu muốn
+    if (lowerOs.includes('linux')) return 'logo-tux';
     return 'desktop-outline';
   };
 

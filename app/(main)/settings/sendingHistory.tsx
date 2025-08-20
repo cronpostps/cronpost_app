@@ -1,55 +1,70 @@
 // app/(main)/settings/sendingHistory.tsx
-// Version 1.0.0
+// Version 1.1.0
 
+import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    FlatList,
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import api from '../../../src/api/api';
 import { Colors } from '../../../src/constants/Colors';
-import { useAuth } from '../../../src/store/AuthContext';
 import { useTheme } from '../../../src/store/ThemeContext';
 import { translateApiError } from '../../../src/utils/errorTranslator';
 
+type SendingStatus = 'success' | 'partial' | 'failed' | string;
+
+interface HistoryItem {
+  id: string;
+  message_title: string;
+  receivers: string;
+  messenger_type: string;
+  sending_method: string;
+  loop_progress: string;
+  status: SendingStatus;
+  status_details?: string;
+  sent_at: string;
+}
+
+interface SelectedHistoryItem extends HistoryItem {
+  failures: Map<string, string>;
+  successList: string[];
+}
+
 export default function SendingHistoryScreen() {
-  const { t, i18n } = useTranslation();
+ const { t, i18n } = useTranslation();
   const { theme } = useTheme();
-  const { user } = useAuth();
   const themeColors = Colors[theme];
 
-  const [history, setHistory] = useState([]);
-  const [page, setPage] = useState(1);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [sortBy, setSortBy] = useState('time');
-  const [sortDir, setSortDir] = useState('desc');
 
   const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedItem, setSelectedItem] = useState<SelectedHistoryItem | null>(null);
 
   const fetchHistory = useCallback(async (isInitial = false) => {
     if (isLoadingMore) return;
     if (isInitial) {
       setIsLoading(true);
+      setPage(0);
     } else {
       setIsLoadingMore(true);
     }
-
     try {
       const nextPage = isInitial ? 1 : page + 1;
-      const response = await api.get(`/api/users/sending-history?page=${nextPage}&sort_by=${sortBy}&sort_dir=${sortDir}`);
+      const response = await api.get(`/api/users/sending-history?page=${nextPage}&page_size=10`);
       const { items, total_pages, current_page } = response.data;
-      
       setHistory(prev => (isInitial ? items : [...prev, ...items]));
       setPage(current_page);
       setTotalPages(total_pages);
@@ -59,13 +74,14 @@ export default function SendingHistoryScreen() {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [page, sortBy, sortDir, isLoadingMore]);
-
+  }, [page, isLoadingMore]);
+  
   useEffect(() => {
-    fetchHistory(true);
-  }, [sortBy, sortDir]);
+      fetchHistory(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleOpenDetails = (item) => {
+  const handleOpenDetails = (item: HistoryItem) => {
     const failures = new Map();
     if (item.status_details) {
       item.status_details.split(';').forEach(part => {
@@ -85,20 +101,20 @@ export default function SendingHistoryScreen() {
     setDetailModalVisible(true);
   };
 
-const getStatusStyle = (status) => {
+const getStatusStyle = (status: SendingStatus) => {
     switch (status) {
       case 'success':
-        return { backgroundColor: themeColors.success, color: '#0fecb5ff' };
+        return { backgroundColor: themeColors.success, color: '#FFFFFF' };
       case 'partial':
-        return { backgroundColor: themeColors.warning, color: '#ecde12ff' };
+        return { backgroundColor: themeColors.warning, color: '#000000' }; 
       case 'failed':
-        return { backgroundColor: themeColors.danger, color: '#ee0808ff' };
+        return { backgroundColor: themeColors.danger, color: '#FFFFFF' };
       default:
-        return { backgroundColor: themeColors.icon, color: '#ffffff' };
+        return { backgroundColor: themeColors.icon, color: '#FFFFFF' };
     }
 };
 
-  const renderItem = ({ item }) => {
+  const renderItem = ({ item }: { item: HistoryItem }) => {
     const statusStyle = getStatusStyle(item.status);
     const date = new Date(item.sent_at);
     const formattedDate = date.toLocaleDateString(i18n.language, { year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -122,11 +138,6 @@ const getStatusStyle = (status) => {
       </TouchableOpacity>
     );
   };
-  
-  const renderListFooter = () => {
-    if (!isLoadingMore) return null;
-    return <ActivityIndicator style={{ marginVertical: 20 }} color={themeColors.tint} />;
-  };
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: themeColors.background },
@@ -141,7 +152,6 @@ const getStatusStyle = (status) => {
     metaText: { color: themeColors.icon, fontSize: 12, textTransform: 'capitalize' },
     statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, alignItems: 'center', justifyContent: 'center', minWidth: 70 },
     statusBadgeText: { fontSize: 12, fontWeight: 'bold', textTransform: 'capitalize' },
-    // Modal Styles
     modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' },
     modalContent: { width: '90%', maxHeight: '80%', backgroundColor: themeColors.background, borderRadius: 10, padding: 20 },
     modalHeader: { fontSize: 18, fontWeight: 'bold', color: themeColors.text, marginBottom: 20 },
@@ -152,25 +162,46 @@ const getStatusStyle = (status) => {
     successListContainer: { flexDirection: 'row', flexWrap: 'wrap' },
     successBadge: { backgroundColor: themeColors.inputBorder, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12, margin: 4, alignSelf: 'flex-start' },
     successEmail: { color: themeColors.text, fontSize: 12 },
+    loadMoreButton: {
+      alignItems: 'center',
+      paddingVertical: 20,
+    },
+    loadingMoreContainer: {
+      paddingVertical: 20,
+    },
   });
 
-  if (isLoading && page === 1) {
-    return <View style={styles.loadingContainer}><ActivityIndicator size="large" color={themeColors.tint} /></View>;
+  if (isLoading) {
+      return <View style={styles.loadingContainer}><ActivityIndicator size="large" color={themeColors.tint} /></View>;
   }
+
+  const renderFooter = () => {
+    if (!isLoadingMore && page < totalPages) {
+      return (
+        <TouchableOpacity style={styles.loadMoreButton} onPress={() => fetchHistory()}>
+          <Ionicons name="arrow-down-circle-outline" size={40} color={themeColors.tint} />
+        </TouchableOpacity>
+      );
+    }
+    if (isLoadingMore) {
+      return (
+        <View style={styles.loadingMoreContainer}>
+          <ActivityIndicator size="small" color={themeColors.tint} />
+        </View>
+      );
+    }
+    return null;
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <FlatList
-        data={history}
-        keyExtractor={(item, index) => `${item.id}-${index}`}
-        renderItem={renderItem}
-        onEndReached={() => {
-          if (page < totalPages) fetchHistory();
-        }}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={renderListFooter}
-        ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyText}>{t('history_page.empty_list')}</Text></View>}
-        contentContainerStyle={{ paddingVertical: 8 }}
+          data={history}
+          keyExtractor={(item, index) => `${item.id}-${index}`}
+          renderItem={renderItem}
+          ListFooterComponent={renderFooter} // Thêm prop này
+          ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyText}>{t('history_page.empty_list')}</Text></View>}
+          contentContainerStyle={{ paddingVertical: 8 }}
       />
 
       <Modal visible={detailModalVisible} transparent animationType="fade" onRequestClose={() => setDetailModalVisible(false)}>
@@ -178,22 +209,22 @@ const getStatusStyle = (status) => {
           <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
             <Text style={styles.modalHeader}>{t('history_page.modal_title')}</Text>
             <ScrollView>
-              {selectedItem?.failures?.size > 0 && (
+              {selectedItem?.failures && selectedItem.failures.size > 0 && (
                 <View>
                   <Text style={styles.detailSectionTitle}>{t('history_page.modal_failed_header')} ({selectedItem.failures.size})</Text>
-                  {Array.from(selectedItem.failures.entries()).map(([email, reason]) => (
-                    <View key={email} style={styles.recipientItem}>
-                      <Text style={styles.recipientEmail}>{email}</Text>
-                      <Text style={styles.recipientReason}>{reason}</Text>
-                    </View>
+                  {Array.from(selectedItem.failures.entries()).map(([email, reason]: [string, string]) => (
+                      <View key={email} style={styles.recipientItem}>
+                        <Text style={styles.recipientEmail}>{email}</Text>
+                        <Text style={styles.recipientReason}>{reason}</Text>
+                      </View>
                   ))}
                 </View>
               )}
-              {selectedItem?.successList?.length > 0 && (
+              {selectedItem?.successList && selectedItem.successList.length > 0 && (
                  <View>
                     <Text style={styles.detailSectionTitle}>{t('history_page.modal_success_header')} ({selectedItem.successList.length})</Text>
                     <View style={styles.successListContainer}>
-                      {selectedItem.successList.map(email => (
+                    {selectedItem.successList.map((email: string) => (
                         <View key={email} style={styles.successBadge}>
                           <Text style={styles.successEmail}>{email}</Text>
                         </View>

@@ -1,4 +1,5 @@
 // app/(main)/settings/recoverPin.tsx
+// version: 1.0.0
 
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';

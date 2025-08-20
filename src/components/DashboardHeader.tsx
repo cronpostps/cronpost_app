@@ -1,5 +1,5 @@
 // src/components/DashboardHeader.tsx
-// Version: 3.0.1 (Kiến trúc độc lập, tự quản lý)
+// Version: 3.0.1
 
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -9,16 +9,14 @@ import { Colors } from '../constants/Colors';
 import { useAuth } from '../store/AuthContext';
 import { useTheme } from '../store/ThemeContext';
 
-// --- Helper Functions ---
 const formatDate = (date: Date, formatPreference: string) => {
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
-
     switch (formatPreference) {
         case 'mm/dd/yyyy': return `${month}/${day}/${year}`;
         case 'yyyy/mm/dd': return `${year}/${month}/${day}`;
-        default: return `${day}/${month}/${year}`; // dd/mm/yyyy
+        default: return `${day}/${month}/${year}`;
     }
 };
 
@@ -29,17 +27,15 @@ const formatGmtString = (offsetSeconds: number) => {
     return `[GMT${sign}${String(offsetHours).padStart(2, '0')}:${String(offsetMinutes).padStart(2, '0')}]`;
 };
 
-// Component không cần nhận props nữa
 export const DashboardHeader = () => {
     const { t } = useTranslation();
     const { theme } = useTheme();
-    const { user } = useAuth(); // Lấy thông tin user từ context
+    const { user } = useAuth();
     const themeColors = Colors[theme];
 
     const [displayTime, setDisplayTime] = useState('');
     const [isLoading, setIsLoading] = useState(true);
 
-    // Lấy thông tin trực tiếp từ user object trong context
     const userName = user?.user_name || user?.email || '';
     const status = user?.account_status || '...';
     const timezone = user?.timezone;
