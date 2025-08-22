@@ -931,31 +931,6 @@
     "loop_by_days_today": "Note: If the sending time has not yet passed today, the first message will be sent today.",
     "lunar_leap_month_skip": "Note: Schedules for this leap month will be skipped in years that do not have it."
   },
-  "token_error_page": {
-    "title": "Action Failed - CronPost",
-    "default_title": "An Error Occurred",
-    "default_detail": "The link you used may be invalid, expired, or has already been used.",
-    "btn_signin": "Go to Sign In",
-    "checkin_failed_title": "Check-in Failed",
-    "stop_fns_failed_title": "FNS Termination Failed"
-  },
-  "stop_fns_page": {
-    "title": "Stop FNS Process - CronPost",
-    "loading_title": "Validating Request...",
-    "status_loading": "Loading...",
-    "confirm_header": "Please Confirm Your Action",
-    "confirm_p1": "You are about to terminate the UCM process for account:",
-    "warning_strong": "Warning:",
-    "warning_text": "This action cannot be undone. All remaining scheduled messages in this UCM sequence will be permanently canceled.",
-    "btn_confirm": "Yes, Confirm Termination",
-    "btn_signin": "Go to Sign In",
-    "result_title_error": "Termination Failed",
-    "result_title_success": "Process Terminated!",
-    "error_incomplete_link": "The termination link is incomplete. Please use the exact link from your email.",
-    "error_validation_failed": "Token validation failed.",
-    "error_termination_failed": "Failed to terminate the process.",
-    "error_generic_redirect": "This termination link may be invalid, expired, or has already been used."
-  },
   "signup_page": {
     "title": "Sign Up - CronPost",
     "header": "Create Your Account",
@@ -973,7 +948,6 @@
     "prompt_signin": "Already have an account?",
     "link_signin": "Back to Sign In",
     "error_passwords_mismatch": "Passwords do not match.",
-    "error_captcha_required": "Please complete the CAPTCHA verification.",
     "status_creating": "Creating Account...",
     "success_message": "Registration successful! A confirmation link has been sent to your email. Please check your inbox (and spam folder) to verify your account.",
     "error_email_required": "Email is required.",
@@ -1004,7 +978,6 @@
     "error_email_invalid": "Please enter a valid email address.",
     "error_password_required": "Password is required.",
     "error_form_generic": "Please correct the errors in the form.",
-    "error_captcha_required": "Please complete the CAPTCHA verification.",
     "status_signing_in": "Signing In...",
     "status_sending": "Sending...",
     "status_resending": "Resending...",
@@ -1336,6 +1309,9 @@
     "additional_reminder_desc": "Send an additional check-in reminder email and app push notification. This reminder will not be sent if the value is greater than the actual WCT duration.",
     "additional_reminder_minutes_label": "Minutes before WCT ends",
     "success_saved": "Setting updated successfully."
+  },
+  "language_picker": {
+      "title": "Select a Language"
   },
   "trust_verifier_page": {
     "title": "Trust Verifier (Premium)",

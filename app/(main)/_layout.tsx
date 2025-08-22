@@ -61,7 +61,7 @@ export default function MainTabLayout() {
           tabPress: (e) => {
             if (user?.account_status === 'FNS') {
               e.preventDefault();
-              router.push('/(main)/dashboard');
+              router.push('/dashboard');
               Toast.show({
                 type: 'info',
                 text1: t('fns_page.card_title'),

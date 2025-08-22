@@ -19,6 +19,7 @@ import {
   View,
 } from 'react-native';
 import api from '../../../src/api/api';
+import LanguagePicker from '../../../src/components/LanguagePicker';
 import { Colors } from '../../../src/constants/Colors';
 import { useAuth } from '../../../src/store/AuthContext';
 import { useTheme } from '../../../src/store/ThemeContext';
@@ -50,6 +51,10 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     const fetchUser = async () => {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
       try {
         const response = await api.get('/api/users/me');
         setScreenUser(response.data);
@@ -58,7 +63,7 @@ export default function SettingsScreen() {
           'Failed to fetch latest user data for settings screen',
           error
         );
-        setScreenUser(user); // Fallback to context user on error
+        setScreenUser(user);
       } finally {
         setIsLoading(false);
       }
@@ -81,10 +86,7 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleLanguageChange = () => {
-    const nextLang = i18n.language === 'en' ? 'vi' : 'en';
-    i18n.changeLanguage(nextLang);
-  };
+  const [isLanguagePickerVisible, setLanguagePickerVisible] = useState(false);
 
   const handleRateApp = () => {
     const storeUrl =
@@ -402,7 +404,7 @@ export default function SettingsScreen() {
           <View style={styles.settingsContainer}>
             <TouchableOpacity
               style={styles.settingButton}
-              onPress={handleLanguageChange}>
+              onPress={() => setLanguagePickerVisible(true)}>
               <Ionicons name="globe-outline" size={20} color={themeColors.text} />
               <Text style={styles.settingText}>
                 {i18n.language.toUpperCase()}
@@ -422,6 +424,10 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        <LanguagePicker
+          isVisible={isLanguagePickerVisible}
+          onClose={() => setLanguagePickerVisible(false)}
+        />
       </ScrollView>
     </SafeAreaView>
   );

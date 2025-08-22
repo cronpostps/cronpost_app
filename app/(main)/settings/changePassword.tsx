@@ -1,5 +1,5 @@
 // app/(main)/settings/changePassword.tsx
-// Version: 1.1.0 (Replaced Alerts with Toasts)
+// Version: 1.1.0
 
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -15,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Toast from 'react-native-toast-message'; // FIX: Thêm import Toast
+import Toast from 'react-native-toast-message';
 import api from '../../../src/api/api';
 import { Colors } from '../../../src/constants/Colors';
 import { useTheme } from '../../../src/store/ThemeContext';
@@ -34,7 +34,6 @@ export default function ChangePasswordScreen() {
   const [isSaving, setIsSaving] = useState(false);
 
   const handleUpdate = async () => {
-    // FIX: Thay thế Alert bằng Toast cho các lỗi validation
     if (newPassword.length < 6 || newPassword.length > 20) {
       Toast.show({
         type: 'error',
@@ -58,14 +57,12 @@ export default function ChangePasswordScreen() {
         current_password: currentPassword,
         new_password: newPassword,
       });
-      // FIX: Thay thế Alert bằng Toast và dùng onHide để quay về
       Toast.show({
         type: 'success',
         text1: t('change_password_page.success_message'),
         onHide: () => router.back(),
       });
     } catch (error) {
-      // FIX: Thay thế Alert bằng Toast cho lỗi từ API
       Toast.show({
         type: 'error',
         text1: t('errors.title_error'),

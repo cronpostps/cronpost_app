@@ -199,9 +199,11 @@ const getStatusStyle = (status: SendingStatus) => {
           data={history}
           keyExtractor={(item, index) => `${item.id}-${index}`}
           renderItem={renderItem}
-          ListFooterComponent={renderFooter} // Thêm prop này
+          ListFooterComponent={renderFooter}
           ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyText}>{t('history_page.empty_list')}</Text></View>}
           contentContainerStyle={{ paddingVertical: 8 }}
+          onRefresh={() => fetchHistory(true)}
+          refreshing={isLoading}
       />
 
       <Modal visible={detailModalVisible} transparent animationType="fade" onRequestClose={() => setDetailModalVisible(false)}>

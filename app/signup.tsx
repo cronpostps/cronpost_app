@@ -67,7 +67,7 @@ const SignUpScreen = () => {
 
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
-      router.replace('/(main)/dashboard');
+      router.replace('/dashboard');
     }
   }, [isAuthenticated, isLoading, router]);
   

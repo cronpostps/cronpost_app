@@ -20,6 +20,7 @@ import {
   View,
 } from 'react-native';
 import { SvgXml } from 'react-native-svg';
+import LanguagePicker from '../src/components/LanguagePicker';
 import { Colors } from '../src/constants/Colors';
 import { useAuth } from '../src/store/AuthContext';
 import { useTheme } from '../src/store/ThemeContext';
@@ -62,10 +63,7 @@ const LoginScreen = () => {
 
   const themeColors = Colors[theme];
 
-  const handleLanguageChange = () => {
-    const nextLang = i18n.language === 'en' ? 'vi' : 'en';
-    i18n.changeLanguage(nextLang);
-  };
+  const [isLanguagePickerVisible, setLanguagePickerVisible] = useState(false);
 
   const handleLogin = async () => {
     setIsLoading(true);
@@ -81,7 +79,22 @@ const LoginScreen = () => {
     }
   };
 
+  // const handleGoogleSignIn = async () => {
+  //   setError(null);
+  //   try {
+  //     await signInWithGoogle();
+  //   } catch (err: any) {
+  //     const friendlyError = translateApiError(err);
+  //     setError(friendlyError);
+  //     Alert.alert(t('errors.access_denied'), friendlyError);
+  //   }
+  // };
+  // HÀM ĐÃ CẬP NHẬT
   const handleGoogleSignIn = async () => {
+    // Ngăn người dùng nhấn nhiều lần
+    if (isLoading) return; 
+
+    setIsLoading(true);
     setError(null);
     try {
       await signInWithGoogle();
@@ -89,7 +102,11 @@ const LoginScreen = () => {
       const friendlyError = translateApiError(err);
       setError(friendlyError);
       Alert.alert(t('errors.access_denied'), friendlyError);
-    }
+      setIsLoading(false); // Đảm bảo tắt loading khi có lỗi
+    } 
+    // Không cần finally setIsLoading(false) ở đây,
+    // vì sau khi xác thực thành công, app sẽ chuyển màn hình.
+    // AuthContext sẽ xử lý việc tắt loading nếu cần.
   };
 
   const styles = StyleSheet.create({
@@ -276,7 +293,7 @@ const LoginScreen = () => {
             <View style={styles.separatorLine} />
           </View>
 
-          <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignIn}>
+          <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignIn} disabled={isLoading}>
             <Image
               source={{ uri: 'https://developers.google.com/identity/images/g-logo.png' }}
               style={styles.googleIcon}
@@ -293,7 +310,7 @@ const LoginScreen = () => {
             </View>
 
             <View style={styles.settingsContainer}>
-               <TouchableOpacity style={styles.settingButton} onPress={handleLanguageChange}>
+               <TouchableOpacity style={styles.settingButton} onPress={() => setLanguagePickerVisible(true)}>
                 <SvgXml xml={globeIcon} width="20" height="20" stroke={themeColors.text} />
                 <Text style={styles.settingText}>{i18n.language.toUpperCase()}</Text>
               </TouchableOpacity>
@@ -306,6 +323,10 @@ const LoginScreen = () => {
               </TouchableOpacity>
             </View>
           </View>
+            <LanguagePicker
+              isVisible={isLanguagePickerVisible}
+              onClose={() => setLanguagePickerVisible(false)}
+            />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

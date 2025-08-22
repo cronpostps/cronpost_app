@@ -7,7 +7,7 @@ import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -26,15 +26,28 @@ declare global {
 globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
 
 const InitialLayout = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isAuthProcessing } = useAuth(); 
   const { theme } = useTheme();
   const segments = useSegments();
   const router = useRouter();
-  
+  const [isMounted, setIsMounted] = useState(false);
   const themeColors = Colors[theme];
 
   useEffect(() => {
-    if (isLoading) return;
+    const hideSplashScreen = async () => {
+      if (!isLoading) {
+        await SplashScreen.hideAsync();
+      }
+    };
+    hideSplashScreen();
+  }, [isLoading]);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isLoading || !isMounted) return;
     const inAuthGroup = segments[0] === '(main)';
 
     if (isAuthenticated && !inAuthGroup) {
@@ -42,9 +55,9 @@ const InitialLayout = () => {
     } else if (!isAuthenticated && inAuthGroup) {
       router.replace('/');
     }
-  }, [isAuthenticated, isLoading, segments, router]);
+  }, [isAuthenticated, isLoading, segments, router, isMounted]);
 
-  if (isLoading) {
+  if (isLoading || isAuthProcessing) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: themeColors.background }}>
         <ActivityIndicator size="large" color={themeColors.tint} />
@@ -69,12 +82,6 @@ export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     ...Ionicons.font,
   });
-
-  useEffect(() => {
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, fontError]);
 
   useEffect(() => {
     const unsubscribeFromForeground = messaging().onMessage(async remoteMessage => {

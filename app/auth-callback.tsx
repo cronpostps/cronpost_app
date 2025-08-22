@@ -1,10 +1,12 @@
-// app/+not-found.tsx
+// app/auth-callback.tsx
 
 import React from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Colors } from '../src/constants/Colors';
 import { useTheme } from '../src/store/ThemeContext';
-const NotFoundScreen = () => {
+
+// Màn hình này chỉ hiển thị một spinner chờ ở giữa
+const AuthCallbackScreen = () => {
   const { theme } = useTheme();
   const themeColors = Colors[theme];
 
@@ -23,4 +25,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default NotFoundScreen;
+export default AuthCallbackScreen;

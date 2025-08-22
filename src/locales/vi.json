@@ -949,31 +949,6 @@
     "loop_by_days_today": "Lưu ý: Nếu thời gian gửi chưa trôi qua trong ngày hôm nay, tin nhắn đầu tiên sẽ được gửi trong ngày hôm nay.",
     "lunar_leap_month_skip": "Lưu ý: Lịch trình cho tháng nhuận này sẽ bị bỏ qua trong những năm không có nó."
   },
-  "token_error_page": {
-    "title": "Hành động thất bại - CronPost",
-    "default_title": "Đã xảy ra lỗi",
-    "default_detail": "Liên kết bạn đã sử dụng có thể không hợp lệ, đã hết hạn hoặc đã được sử dụng.",
-    "btn_signin": "Đến trang Đăng nhập",
-    "checkin_failed_title": "Check-in thất bại",
-    "stop_fns_failed_title": "Chấm dứt FNS thất bại"
-  },
-  "stop_fns_page": {
-    "title": "Dừng quy trình FNS - CronPost",
-    "loading_title": "Đang xác thực yêu cầu...",
-    "status_loading": "Đang tải...",
-    "confirm_header": "Vui lòng xác nhận hành động của bạn",
-    "confirm_p1": "Bạn sắp chấm dứt quy trình UCM cho tài khoản:",
-    "warning_strong": "Cảnh báo:",
-    "warning_text": "Hành động này không thể hoàn tác. Tất cả các tin nhắn đã lập lịch còn lại trong chuỗi UCM này sẽ bị hủy vĩnh viễn.",
-    "btn_confirm": "Có, Xác nhận chấm dứt",
-    "btn_signin": "Đến trang Đăng nhập",
-    "result_title_error": "Chấm dứt thất bại",
-    "result_title_success": "Quy trình đã được chấm dứt!",
-    "error_incomplete_link": "Liên kết chấm dứt không đầy đủ. Vui lòng sử dụng liên kết chính xác từ email của bạn.",
-    "error_validation_failed": "Xác thực mã thông báo thất bại.",
-    "error_termination_failed": "Không thể chấm dứt quy trình.",
-    "error_generic_redirect": "Liên kết chấm dứt này có thể không hợp lệ, đã hết hạn hoặc đã được sử dụng."
-  },
   "signup_page": {
     "title": "Đăng ký - CronPost",
     "header": "Tạo tài khoản của bạn",
@@ -991,7 +966,6 @@
     "prompt_signin": "Bạn đã có tài khoản?",
     "link_signin": "Quay lại Đăng nhập",
     "error_passwords_mismatch": "Mật khẩu không khớp.",
-    "error_captcha_required": "Vui lòng hoàn thành xác minh CAPTCHA.",
     "status_creating": "Đang tạo tài khoản...",
     "success_message": "Đăng ký thành công! Một liên kết xác nhận đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư đến (và thư mục spam) để xác minh tài khoản của bạn.",
     "error_email_required": "Email là bắt buộc.",
@@ -1022,7 +996,6 @@
     "error_email_invalid": "Vui lòng nhập một địa chỉ email hợp lệ.",
     "error_password_required": "Mật khẩu là bắt buộc.",
     "error_form_generic": "Vui lòng sửa các lỗi trong biểu mẫu.",
-    "error_captcha_required": "Vui lòng hoàn thành xác minh CAPTCHA.",
     "status_signing_in": "Đang đăng nhập...",
     "status_sending": "Đang gửi...",
     "status_resending": "Đang gửi lại...",
@@ -1354,6 +1327,9 @@
     "additional_reminder_desc": "Gửi một email và thông báo đẩy trong ứng dụng nhắc nhở check-in bổ sung. Lời nhắc này sẽ không được gửi nếu giá trị lớn hơn thời gian WCT thực tế.",
     "additional_reminder_minutes_label": "Số phút trước khi WCT kết thúc",
     "success_saved": "Cài đặt đã được cập nhật thành công."
+  },
+  "language_picker": {
+      "title": "Chọn một ngôn ngữ"
   },
   "trust_verifier_page": {
     "title": "Trình xác minh đáng tin cậy (Premium)",

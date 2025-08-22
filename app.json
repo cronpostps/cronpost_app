@@ -14,6 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
+      "buildNumber": "1",
       "infoPlist": {
         "NSContactsUsageDescription": "CronPost uses your contacts to help you easily select recipients for your messages.",
         "NSFaceIDUsageDescription": "CronPost uses Face ID to securely unlock your account and verify critical actions.",
@@ -45,7 +46,7 @@
       "softwareKeyboardLayoutMode": "pan"
     },
     "notification": {
-       "icon": "./assets/images/notification-icon.png"
+      "icon": "./assets/images/notification-icon.png"
     },
     "web": {
       "bundler": "metro",
@@ -61,7 +62,16 @@
         }
       ],
       "@react-native-firebase/app",
-      "@react-native-firebase/messaging"
+      "@react-native-firebase/messaging",
+      "./plugins/withFirebaseIOS.js",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

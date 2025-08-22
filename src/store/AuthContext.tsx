@@ -1,9 +1,8 @@
 // src/store/AuthContext.tsx
-// Version: 2.0.0 (Refactored with Auto Check-in & Stable Handlers)
+// Version: 2.0.2
 
 import * as Google from 'expo-auth-session/providers/google';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { useRouter, useSegments } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
@@ -32,14 +31,12 @@ interface User {
   max_message_chars_free: number;
   max_message_chars_premium: number;
 
-  // Các trường đã được bổ sung
   account_status: string; 
   checkin_on_signin: boolean;
   use_pin_for_all_actions: boolean;
   pin_code_question: string | null;
   trust_verifier_email: string | null;
   
-  // Thêm các trường giới hạn từ backend (nếu cần)
   limit_recipients_cronpost_email_free: number;
   limit_recipients_in_app_messaging_free: number;
   limit_recipients_user_email_free: number;
@@ -73,7 +70,6 @@ const checkAndUpdateTimezone = async (
   hasShown: boolean, 
   setHasShown: React.Dispatch<React.SetStateAction<boolean>>
 ) => {
-  // ... (Nội dung hàm này giữ nguyên)
   if (!user || !user.timezone || hasShown) return;
 
   try {
@@ -132,15 +128,16 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
     });
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [isGoogleAuthLoading, setIsGoogleAuthLoading] = useState(false);
-    
+    // const [isGoogleAuthLoading, setIsGoogleAuthLoading] = useState(false);
+    const [isAuthProcessing, setIsAuthProcessing] = useState(false);
+
     const [isAppLocked, setIsAppLocked] = useState(true);
     const [pinModalVisible, setPinModalVisible] = useState(false);
     const [isVerifyingPin, setIsVerifyingPin] = useState(false);
     const [hasShownTimezoneAlert, setHasShownTimezoneAlert] = useState(false);
     const pinModalRef = useRef<PinModalRef>(null);
-    const router = useRouter();
-    const segments = useSegments();
+    // const router = useRouter();
+    // const segments = useSegments();
     const { theme } = useTheme();
     const themeColors = Colors[theme];
 
@@ -148,7 +145,7 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
     const [_request, response, promptAsync] = Google.useAuthRequest({
         androidClientId: GoogleAuthConfig.androidClientId,
         iosClientId: GoogleAuthConfig.iosClientId,
-        clientId: GoogleAuthConfig.expoClientId,
+        clientId: GoogleAuthConfig.expoClientId, 
     });
 
     const signOut = async () => {
@@ -164,10 +161,9 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
     };
 
     const performAutoCheckinIfNeeded = useCallback(async (userToCheck: User) => {
-        // Thêm điều kiện kiểm tra account_status
         if (userToCheck.checkin_on_signin && 
             !userToCheck.use_pin_for_all_actions &&
-            userToCheck.account_status === 'ANS_WCT') { // <-- Điều kiện mới quan trọng
+            userToCheck.account_status === 'ANS_WCT') {
             
             try {
                 console.log('Performing automatic check-in (Status: WCT)...');
@@ -178,23 +174,46 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
                     visibilityTime: 2000,
                 });
             } catch (error) {
-                // Giữ lại log này vì nó sẽ chỉ xuất hiện khi có lỗi thực sự, không mong muốn
                 console.error("Auto check-in failed unexpectedly:", error);
             }
         }
     }, []);
         
-    const handleSuccessfulLogin = useCallback(async (accessToken: string, refreshToken: string) => {
-        await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
-        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
-        
-        const userResponse = await api.get('/api/users/me');
-        const currentUser: User = userResponse.data;
-        setUser(currentUser);
-        setAuthState({ accessToken: accessToken, refreshToken: refreshToken, isAuthenticated: true });
+  const handleSuccessfulLogin = useCallback(async (accessToken: string, refreshToken: string) => {
+      await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
+      await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
 
-        await performAutoCheckinIfNeeded(currentUser);
-    }, [performAutoCheckinIfNeeded]);
+      const userResponse = await api.get('/api/users/me');
+      const currentUser: User = userResponse.data;
+      setUser(currentUser);
+      setAuthState({ accessToken: accessToken, refreshToken: refreshToken, isAuthenticated: true });
+
+      await performAutoCheckinIfNeeded(currentUser);
+
+      // --- BẮT ĐẦU ĐOẠN MÃ CẦN THÊM ---
+      const biometricsKey = `biometrics_enabled_for_${currentUser.id}`;
+      const isBiometricsEnabled = await SecureStore.getItemAsync(biometricsKey);
+
+      if (currentUser.has_pin) {
+          setIsAppLocked(true); // Đảm bảo app ở trạng thái khóa
+          if (isBiometricsEnabled === 'true') {
+              const result = await LocalAuthentication.authenticateAsync({
+                  promptMessage: i18n.t('biometrics.prompt_message'),
+              });
+              if (result.success) {
+                  setIsAppLocked(false);
+              } else {
+                  setPinModalVisible(true);
+              }
+          } else {
+              setPinModalVisible(true);
+          }
+      } else {
+          setIsAppLocked(false);
+      }
+      // --- KẾT THÚC ĐOẠN MÃ CẦN THÊM ---
+
+  }, [performAutoCheckinIfNeeded]);
     
     useEffect(() => {
       const handleGoogleResponse = async () => {
@@ -216,7 +235,7 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
           console.error("Google Sign-In failed on backend:", error);
           Alert.alert("Google Sign-In Failed", "Could not sign in with Google. Please try again.");
         } finally {
-          setIsGoogleAuthLoading(false);
+          setIsAuthProcessing(false);
         }
       };
       if (response) { handleGoogleResponse(); }
@@ -279,12 +298,12 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
       }
     }, [user, isLoading, hasShownTimezoneAlert]);
   
-    useEffect(() => {
-      if (isLoading) return;
-      const inAuthGroup = segments[0] === '(main)';
-      if (authState.isAuthenticated && !inAuthGroup) { router.replace('/(main)/dashboard'); } 
-      else if (!authState.isAuthenticated && inAuthGroup) { router.replace('/'); }
-    }, [authState.isAuthenticated, isLoading, segments, router]);
+    // useEffect(() => {
+    //   if (isLoading) return;
+    //   const inAuthGroup = segments[0] === '(main)';
+    //   if (authState.isAuthenticated && !inAuthGroup) { router.replace('/(main)/dashboard'); } 
+    //   else if (!authState.isAuthenticated && inAuthGroup) { router.replace('/'); }
+    // }, [authState.isAuthenticated, isLoading, segments, router]);
   
     const signIn = async (email: string, password: string) => {
       try {
@@ -294,8 +313,12 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
       } catch (e: any) { console.error('Sign in failed', e); throw e; }
     };
   
+    // const signInWithGoogle = async () => {
+    //   setIsGoogleAuthLoading(true);
+    //   await promptAsync();
+    // };
     const signInWithGoogle = async () => {
-      setIsGoogleAuthLoading(true);
+      setIsAuthProcessing(true); // <-- THÊM DÒNG NÀY
       await promptAsync();
     };
   
@@ -340,7 +363,7 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
         }
     };
   
-    const value = { signIn, signInWithGoogle, signOut, user, isLoading, isAuthenticated: authState.isAuthenticated, refreshUser };
+    const value = { signIn, signInWithGoogle, signOut, user, isLoading, isAuthenticated: authState.isAuthenticated, isAuthProcessing, refreshUser };
     
     const styles = StyleSheet.create({
         lockScreenContainer: {
@@ -370,13 +393,13 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
         );
     }
 
-  if (isGoogleAuthLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
+  // if (isGoogleAuthLoading) {
+  //   return (
+  //     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+  //       <ActivityIndicator size="large" />
+  //     </View>
+  //   );
+  // }
   
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

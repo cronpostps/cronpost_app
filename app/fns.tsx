@@ -15,7 +15,7 @@ export default function FnsScreen() {
   const styles = createStyles(themeColors);
 
   useEffect(() => {
-    router.replace('/(main)/dashboard');
+    router.replace('/dashboard');
   }, [router]);
 
   return (
