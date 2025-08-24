@@ -24,7 +24,15 @@
         "UIBackgroundModes": [
           "fetch",
           "remote-notification"
-        ]
+        ],
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.cronpost.app"
+            ]
+          }
+        ],
+        "APSEnvironment": "development"
       },
       "bundleIdentifier": "com.cronpost.app",
       "googleServicesFile": "./GoogleService-Info.plist"

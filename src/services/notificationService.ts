@@ -29,6 +29,10 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
     return;
   }
   
+  if (Platform.OS === 'ios') {
+    await messaging().registerDeviceForRemoteMessages();
+  }
+  
   try {
     const token = await messaging().getToken();
     console.log('Obtained FCM Token:', token);
