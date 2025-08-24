@@ -31,8 +31,10 @@
               "com.cronpost.app"
             ]
           }
-        ],
-        "APSEnvironment": "development"
+        ]
+      },
+      "entitlements": {
+        "aps-environment": "development"
       },
       "bundleIdentifier": "com.cronpost.app",
       "googleServicesFile": "./GoogleService-Info.plist"
