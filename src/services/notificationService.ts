@@ -1,5 +1,5 @@
 // src/services/notificationService.ts
-// Version: 2.2.0 - Update to match modern Firebase API
+// Version: 2.2.1
 
 import messaging from '@react-native-firebase/messaging';
 import { PermissionsAndroid, Platform } from 'react-native';
