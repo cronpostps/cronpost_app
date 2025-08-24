@@ -63,7 +63,6 @@
       ],
       "@react-native-firebase/app",
       "@react-native-firebase/messaging",
-      "./plugins/withFirebaseIOS.js",
       [
         "expo-build-properties",
         {

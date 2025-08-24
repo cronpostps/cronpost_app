@@ -5,7 +5,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { Tabs, useRouter } from 'expo-router';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import Toast from 'react-native-toast-message';
 
 import { Colors } from '../../src/constants/Colors';
 import { useAuth } from '../../src/store/AuthContext';
@@ -56,20 +55,6 @@ export default function MainTabLayout() {
               color={color}
             />
           ),
-        }}
-        listeners={{
-          tabPress: (e) => {
-            if (user?.account_status === 'FNS') {
-              e.preventDefault();
-              router.push('/dashboard');
-              Toast.show({
-                type: 'info',
-                text1: t('fns_page.card_title'),
-                text2: t('fns_page.p1'),
-                visibilityTime: 5000,
-              });
-            }
-          },
         }}
       />
       <Tabs.Screen

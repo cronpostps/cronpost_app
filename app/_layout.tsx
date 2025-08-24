@@ -26,7 +26,8 @@ declare global {
 globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
 
 const InitialLayout = () => {
-  const { isAuthenticated, isLoading, isAuthProcessing } = useAuth(); 
+  // Thêm 'user' vào đây
+  const { user, isAuthenticated, isLoading, isAuthProcessing } = useAuth();
   const { theme } = useTheme();
   const segments = useSegments();
   const router = useRouter();
@@ -48,18 +49,35 @@ const InitialLayout = () => {
 
   useEffect(() => {
     if (isLoading || !isMounted) return;
-    const inAuthGroup = segments[0] === '(main)';
 
-    if (isAuthenticated && !inAuthGroup) {
-      router.replace('/(main)/dashboard');
-    } else if (!isAuthenticated && inAuthGroup) {
-      router.replace('/');
+    const inMainGroup = segments[0] === '(main)';
+    const inFnsScreen = segments[0] === 'fns';
+
+    if (isAuthenticated) {
+      if (user?.account_status === 'FNS' && !inFnsScreen) {
+        router.replace('/fns');
+      } else if (user?.account_status !== 'FNS' && inFnsScreen) {
+        router.replace('/(main)/dashboard');
+      } else if (!inMainGroup && !inFnsScreen) {
+        router.replace('/(main)/dashboard');
+      }
+    } else {
+      if (inMainGroup || inFnsScreen) {
+        router.replace('/');
+      }
     }
-  }, [isAuthenticated, isLoading, segments, router, isMounted]);
+  }, [user, isAuthenticated, isLoading, segments, router, isMounted]);
 
   if (isLoading || isAuthProcessing) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: themeColors.background }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: themeColors.background,
+        }}
+      >
         <ActivityIndicator size="large" color={themeColors.tint} />
       </View>
     );
@@ -70,6 +88,7 @@ const InitialLayout = () => {
       <Stack.Screen name="index" />
       <Stack.Screen name="signup" />
       <Stack.Screen name="(main)" />
+      <Stack.Screen name="fns" />
       <Stack.Screen name="+not-found" />
       <Stack.Screen name="forgot-password" />
     </Stack>
