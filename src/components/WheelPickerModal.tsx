@@ -11,9 +11,12 @@ interface WheelPickerModalProps {
   isVisible: boolean;
   options: PickerOption[];
   title: string;
-  initialValue: PickerOption | null;
+  initialValue?: PickerOption | null;
   onClose: () => void;
   onSelect: (option: PickerOption) => void;
+  mode?: 'single' | 'time';
+  initialTimeValue?: Date;
+  onTimeSelect?: (date: Date) => void;
 }
 
 export default function WheelPickerModal({
@@ -23,27 +26,48 @@ export default function WheelPickerModal({
   initialValue,
   onClose,
   onSelect,
+  mode = 'single',
+  initialTimeValue,
+  onTimeSelect,
 }: WheelPickerModalProps) {
   const { theme } = useTheme();
   const themeColors = Colors[theme];
   const styles = createStyles(themeColors);
 
+  const [selectedHourIndex, setSelectedHourIndex] = useState(0);
+  const [selectedMinuteIndex, setSelectedMinuteIndex] = useState(0);
+
+  const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+  const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [pickerKey, setPickerKey] = useState(0);
 
   useEffect(() => {
     if (isVisible) {
-      const initialIndex = options.findIndex(opt => opt.value === initialValue?.value);
-      setSelectedIndex(initialIndex !== -1 ? initialIndex : 0);
+      if (mode === 'time') {
+        const initialDate = initialTimeValue || new Date();
+        setSelectedHourIndex(initialDate.getHours());
+        setSelectedMinuteIndex(initialDate.getMinutes());
+      } else {
+        const initialIndex = options.findIndex(opt => opt.value === initialValue?.value);
+        setSelectedIndex(initialIndex !== -1 ? initialIndex : 0);
+      }
+      // Tái render picker để đảm bảo giá trị ban đầu được áp dụng
       setPickerKey(prevKey => prevKey + 1);
     }
-  }, [isVisible, initialValue, options]);
+  }, [isVisible, initialValue, options, mode, initialTimeValue]);
 
   const handleConfirm = () => {
-    if (options.length > 0) {
-      const selectedOption = options[selectedIndex];
-      if (selectedOption) {
-        onSelect(selectedOption);
+    if (mode === 'time') {
+      const newDate = new Date(initialTimeValue || Date.now());
+      newDate.setHours(selectedHourIndex, selectedMinuteIndex, 0, 0);
+      onTimeSelect?.(newDate);
+    } else {
+      if (options.length > 0) {
+        const selectedOption = options[selectedIndex];
+        if (selectedOption) {
+          onSelect(selectedOption);
+        }
       }
     }
     onClose();
@@ -71,7 +95,7 @@ export default function WheelPickerModal({
           </View>
 
           <View style={styles.pickerWrapper}>
-            {isVisible && options.length > 0 ? (
+            {isVisible && mode === 'single' && options.length > 0 && (
               <WheelPicker
                 key={pickerKey}
                 dataSource={options.map(opt => opt.label)}
@@ -85,8 +109,40 @@ export default function WheelPickerModal({
                 itemTextStyle={styles.pickerItem}
                 activeItemTextStyle={styles.selectedPickerItem}
               />
-            ) : null}
+            )}
+            {isVisible && mode === 'time' && (
+              <View style={styles.timePickerContainer}>
+                <WheelPicker
+                  key={`${pickerKey}-h`}
+                  dataSource={hours}
+                  selectedIndex={selectedHourIndex}
+                  onValueChange={(data, index) => setSelectedHourIndex(index)}
+                  wrapperHeight={220}
+                  wrapperBackground={themeColors.card}
+                  itemHeight={50}
+                  highlightColor={themeColors.inputBorder}
+                  highlightBorderWidth={1}
+                  itemTextStyle={styles.pickerItem}
+                  activeItemTextStyle={styles.selectedPickerItem}
+                />
+                <Text style={styles.timeSeparator}>:</Text>
+                <WheelPicker
+                  key={`${pickerKey}-m`}
+                  dataSource={minutes}
+                  selectedIndex={selectedMinuteIndex}
+                  onValueChange={(data, index) => setSelectedMinuteIndex(index)}
+                  wrapperHeight={220}
+                  wrapperBackground={themeColors.card}
+                  itemHeight={50}
+                  highlightColor={themeColors.inputBorder}
+                  highlightBorderWidth={1}
+                  itemTextStyle={styles.pickerItem}
+                  activeItemTextStyle={styles.selectedPickerItem}
+                />
+              </View>
+            )}
           </View>
+
         </View>
       </View>
     </Modal>
@@ -147,5 +203,15 @@ const createStyles = (themeColors: any) =>
     selectedPickerItem: {
       color: themeColors.tint,
       fontSize: 28,
+    },
+    timePickerContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    timeSeparator: {
+        fontSize: 28,
+        color: themeColors.tint,
+        marginHorizontal: 10,
     },
   });

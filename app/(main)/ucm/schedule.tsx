@@ -1,5 +1,5 @@
 // app/(main)/ucm/schedule.tsx
-// Version: 2.2.3
+// Version: 2.3.4
 
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
@@ -11,15 +11,14 @@ import {
     Alert,
     Platform,
     SafeAreaView,
-    ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import Toast from 'react-native-toast-message';
-
 import api from '../../../src/api/api';
 import CustomPickerModal, { PickerOption } from '../../../src/components/CustomPickerModal';
 import SafeDateTimePicker from '../../../src/components/SafeDateTimePicker';
@@ -73,8 +72,6 @@ export default function UcmScheduleScreen() {
     const [imWctValue, setImWctValue] = useState('24');
     const [imWctUnit, setImWctUnit] = useState<PickerOption>({ value: 'hours', label: t('ucm_page.time_unit_hours') });
     const [showImDatePicker, setShowImDatePicker] = useState(false);
-    const [showImTimePicker, setShowImTimePicker] = useState(false);
-    const [showImTimePickerOneTime, setShowImTimePickerOneTime] = useState(false);
 
     const [fmTriggerType, setFmTriggerType] = useState<PickerOption>({ value: 'days_after_im_sent', label: t('ucm_page.schedule_form_fm.option_days_after') });
     const [fmDaysAfter, setFmDaysAfter] = useState('1');
@@ -83,8 +80,7 @@ export default function UcmScheduleScreen() {
     const [fmDate, setFmDate] = useState(new Date());
     const [fmRepeat, setFmRepeat] = useState('1');
     const [showFmDatePicker, setShowFmDatePicker] = useState(false);
-    const [showFmTimePicker, setShowFmTimePicker] = useState(false);
-    const [showFmTimePickerOneTime, setShowFmTimePickerOneTime] = useState(false);
+
     const [imDateOfMonthWarning, setImDateOfMonthWarning] = useState<string | null>(null);
     const [imDateOfYearWarning, setImDateOfYearWarning] = useState<string | null>(null);
     const [fmDateOfMonthWarning, setFmDateOfMonthWarning] = useState<string | null>(null);
@@ -96,10 +92,10 @@ export default function UcmScheduleScreen() {
     const [imDayOfYear, setImDayOfYear] = useState<PickerOption | null>(null);
 
     const [pickerVisible, setPickerVisible] = useState(false);
-    const [pickerStyle, setPickerStyle] = useState<'list' | 'wheel'>('list');
     const [pickerOptions, setPickerOptions] = useState<PickerOption[]>([]);
     const [pickerTitle, setPickerTitle] = useState('');
     const [currentPicker, setCurrentPicker] = useState<string | null>(null);
+    const [pickerMode, setPickerMode] = useState<'list' | 'wheel' | 'time'>('list');
 
     const dayOfWeekOptions = useMemo(() => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => ({ value: day, label: t(`ucm_page.day_${day.toLowerCase()}`) })), [t]);
     const imClcTypeOptions = useMemo(() => [
@@ -163,7 +159,13 @@ export default function UcmScheduleScreen() {
             setScheduleMode(isUnloop ? 'unloop' : 'loop');
             
             if (isUnloop && imSchedule.clc_specific_date) {
-                setImClcDate(dayjs(imSchedule.clc_specific_date).toDate());
+                const datePart = dayjs(imSchedule.clc_specific_date);
+                const timeParts = String(imSchedule.clc_prompt_time).split(':').map(Number);
+                const hour = timeParts[0] || 0;
+                const minute = timeParts[1] || 0;
+                const second = timeParts[2] || 0;
+                const combinedDateTime = datePart.hour(hour).minute(minute).second(second);
+                setImClcDate(combinedDateTime.toDate());
             } else {
                 const typeOption = imClcTypeOptions.find(opt => opt.value === imSchedule.clc_type) || imClcTypeOptions[0];
                 setImClcType(typeOption);
@@ -200,11 +202,12 @@ export default function UcmScheduleScreen() {
             const isUnloop = fmSchedule.trigger_type === 'specific_date';
             setScheduleMode(isUnloop ? 'unloop' : 'loop');
             
-            let finalFmDate = new Date();
-            finalFmDate.setHours(9, 0, 0, 0);
+            let finalFmDate;
             if (isUnloop && fmSchedule.specific_date_value) {
                 finalFmDate = dayjs(fmSchedule.specific_date_value).toDate();
             } else {
+                finalFmDate = new Date(0);
+                finalFmDate.setHours(9, 0, 0, 0);
                 const triggerOption = fmTriggerTypeOptions.find(opt => opt.value === fmSchedule.trigger_type) || fmTriggerTypeOptions[0];
                 setFmTriggerType(triggerOption);
                 setFmDaysAfter(String(fmSchedule.days_after_im_value || '1'));
@@ -336,7 +339,7 @@ export default function UcmScheduleScreen() {
             },
             schedule: {},
         };
-        
+
         let endpoint = '';
         const isEditing = !!params.ucmId;
 
@@ -381,17 +384,7 @@ export default function UcmScheduleScreen() {
                             : undefined,
                     }
                 } else {
-                    const year = dayjs(fmDate).year();
-                    const month = dayjs(fmDate).month();
-                    const day = dayjs(fmDate).date();
-                    
-                    const hour = dayjs(fmDate).hour();
-                    const minute = dayjs(fmDate).minute();
-
-                    const combinedDateTime = dayjs()
-                        .year(year).month(month).date(day)
-                        .hour(hour).minute(minute).second(0)
-                        .format('YYYY-MM-DDTHH:mm:ss');
+                    const combinedDateTime = dayjs(fmDate).second(0).format('YYYY-MM-DDTHH:mm:ss');
                     
                     payload.schedule = {
                         trigger_type: 'specific_date',
@@ -421,11 +414,11 @@ export default function UcmScheduleScreen() {
 
     const WarningText = ({ text }: { text: string | null }) => text ? <Text style={styles.warningText}>{text}</Text> : null;
     
-    const openPicker = (pickerType: string, title: string, options: PickerOption[], style: 'list' | 'wheel' = 'list') => {
+    const openPicker = (pickerType: string, title: string, options: PickerOption[], mode: 'list' | 'wheel' | 'time' = 'list') => {
         setCurrentPicker(pickerType);
         setPickerTitle(title);
         setPickerOptions(options);
-        setPickerStyle(style);
+        setPickerMode(mode);
         setPickerVisible(true);
     };
     const onPickerSelect = (option: PickerOption) => {
@@ -435,10 +428,47 @@ export default function UcmScheduleScreen() {
             case 'imWctUnit': setImWctUnit(option); break;
             case 'fmTriggerType': setFmTriggerType(option); break;
             case 'fmDayOfWeek': setFmDayOfWeek(option); break;
-            case 'fmMonthOfYear': setFmMonthOfYear(option); break;
+            case 'fmMonthOfYear':
+                setFmMonthOfYear(option);
+                setFmDayOfYear({ value: '1', label: '1' });
+                break;
             case 'fmDayOfYear': setFmDayOfYear(option); break;
-            case 'imMonthOfYear': setImMonthOfYear(option); break;
+            case 'imMonthOfYear':
+                setImMonthOfYear(option);
+                setImDayOfYear({ value: '1', label: '1' });
+                break;
             case 'imDayOfYear': setImDayOfYear(option); break;
+        }
+    };
+
+    const onTimeSelect = (date: Date) => {
+        const newTime = dayjs(date);
+        switch(currentPicker) {
+            case 'imClcPromptTime':
+                setImClcPromptTime(
+                    dayjs(imClcPromptTime)
+                    .hour(newTime.hour())
+                    .minute(newTime.minute())
+                    .toDate()
+                );
+                break;
+            case 'imClcDate_time':
+                setImClcDate(
+                    dayjs(imClcDate)
+                    .hour(newTime.hour())
+                    .minute(newTime.minute())
+                    .toDate()
+                );
+                break;
+            case 'fmDate_time':
+            case 'fmDateOneTime_time':
+                setFmDate(
+                    dayjs(fmDate)
+                    .hour(newTime.hour())
+                    .minute(newTime.minute())
+                    .toDate()
+                );
+                break;
         }
     };
 
@@ -495,7 +525,7 @@ export default function UcmScheduleScreen() {
                         </>
                     )}
                     <Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_prompt_time')}</Text>
-                    <TouchableOpacity style={styles.pickerButton} onPress={() => setShowImTimePicker(true)}>
+                    <TouchableOpacity style={styles.pickerButton} onPress={() => openPicker('imClcPromptTime', t('ucm_page.schedule_form_im.label_prompt_time'), [], 'time')}>
                         <Text style={styles.pickerButtonText}>{dayjs(imClcPromptTime).format('HH:mm')}</Text>
                         <Ionicons name="time-outline" size={20} color={themeColors.icon} />
                     </TouchableOpacity>
@@ -509,7 +539,7 @@ export default function UcmScheduleScreen() {
                     </TouchableOpacity>
 
                     <Text style={styles.formLabel}>{t('ucm_page.schedule_form_im.label_prompt_time')}</Text>
-                    <TouchableOpacity style={styles.pickerButton} onPress={() => setShowImTimePickerOneTime(true)}>
+                    <TouchableOpacity style={styles.pickerButton} onPress={() => openPicker('imClcDate_time', t('ucm_page.schedule_form_im.label_prompt_time'), [], 'time')}>
                         <Text style={styles.pickerButtonText}>{dayjs(imClcDate).format('HH:mm')}</Text>
                         <Ionicons name="time-outline" size={20} color={themeColors.icon} />
                     </TouchableOpacity>
@@ -581,7 +611,7 @@ export default function UcmScheduleScreen() {
                     
                     <Text style={styles.formLabel}>{t('ucm_page.schedule_form_fm.label_sending_time')}</Text>
                     
-                    <TouchableOpacity style={styles.pickerButton} onPress={() => setShowFmTimePicker(true)}>
+                    <TouchableOpacity style={styles.pickerButton} onPress={() => openPicker('fmDate_time', t('ucm_page.schedule_form_fm.label_sending_time'), [], 'time')}>
                         <Text style={styles.pickerButtonText}>{dayjs(fmDate).format('HH:mm')}</Text>
                         <Ionicons name="time-outline" size={20} color={themeColors.icon} />
                     </TouchableOpacity>
@@ -604,7 +634,7 @@ export default function UcmScheduleScreen() {
                     </TouchableOpacity>
 
                     <Text style={styles.formLabel}>{t('ucm_page.schedule_form_fm.label_sending_time')}</Text>
-                    <TouchableOpacity style={styles.pickerButton} onPress={() => setShowFmTimePickerOneTime(true)}>
+                    <TouchableOpacity style={styles.pickerButton} onPress={() => openPicker('fmDateOneTime_time', t('ucm_page.schedule_form_fm.label_sending_time'), [], 'time')}>
                         <Text style={styles.pickerButtonText}>{dayjs(fmDate).format('HH:mm')}</Text>
                         <Ionicons name="time-outline" size={20} color={themeColors.icon} />
                     </TouchableOpacity>
@@ -629,7 +659,7 @@ export default function UcmScheduleScreen() {
             <TouchableOpacity onPress={handleSubmit} disabled={isSubmitting}>{isSubmitting ? <ActivityIndicator color={themeColors.tint} /> : <Ionicons name="checkmark-circle" size={34} color={themeColors.tint} />}</TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
+        <KeyboardAwareScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
             <View style={styles.summaryContainer}>
               <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Recipients:</Text><Text style={styles.summaryValue} numberOfLines={1}>{messageData.recipients.join(', ')}</Text></View>
               <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Subject:</Text><Text style={styles.summaryValue} numberOfLines={1}>{messageData.subject || `(${t('scm_page.label_no_title')})`}</Text></View>
@@ -637,7 +667,7 @@ export default function UcmScheduleScreen() {
             </View>
             <View style={styles.dividerContainer}><View style={styles.dividerLine} /><Text style={styles.dividerText}>Scheduling</Text><View style={styles.dividerLine} /></View>
             <View style={styles.schedulingContainer}>{params.messageType === 'IM' ? renderIMFields() : renderFMFields()}</View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
         <SafeDateTimePicker
             isVisible={showImDatePicker}
             value={imClcDate}
@@ -650,36 +680,6 @@ export default function UcmScheduleScreen() {
                     .month(newSelection.month())
                     .date(newSelection.date());
                 setImClcDate(updatedDate.toDate());
-            }}
-            timeZoneName={timezone}
-        />
-        <SafeDateTimePicker
-            isVisible={showImTimePickerOneTime}
-            value={imClcDate}
-            mode="time"
-            onClose={() => setShowImTimePickerOneTime(false)}
-            onSelect={(date) => {
-                const newSelection = dayjs(date);
-                const updatedDate = dayjs(imClcDate)
-                    .hour(newSelection.hour())
-                    .minute(newSelection.minute())
-                    .second(newSelection.second());
-                setImClcDate(updatedDate.toDate());
-            }}
-            timeZoneName={timezone}
-        />
-        <SafeDateTimePicker
-            isVisible={showImTimePicker}
-            value={imClcPromptTime}
-            mode="time"
-            onClose={() => setShowImTimePicker(false)}
-            onSelect={(date) => {
-                const newSelection = dayjs(date);
-                const updatedTime = dayjs(imClcPromptTime)
-                    .hour(newSelection.hour())
-                    .minute(newSelection.minute())
-                    .second(newSelection.second());
-                setImClcPromptTime(updatedTime.toDate());
             }}
             timeZoneName={timezone}
         />
@@ -698,37 +698,7 @@ export default function UcmScheduleScreen() {
             }}
             timeZoneName={timezone}
         />
-        <SafeDateTimePicker
-            isVisible={showFmTimePicker}
-            value={fmDate}
-            mode="time"
-            onClose={() => setShowFmTimePicker(false)}
-            onSelect={(date) => {
-                const newSelection = dayjs(date);
-                const updatedDate = dayjs(fmDate)
-                    .hour(newSelection.hour())
-                    .minute(newSelection.minute())
-                    .second(newSelection.second());
-                setFmDate(updatedDate.toDate());
-            }}
-            timeZoneName={timezone}
-        />
-        <SafeDateTimePicker
-            isVisible={showFmTimePickerOneTime}
-            value={fmDate}
-            mode="time"
-            onClose={() => setShowFmTimePickerOneTime(false)}
-            onSelect={(date) => {
-                const newSelection = dayjs(date);
-                const updatedDate = dayjs(fmDate)
-                    .hour(newSelection.hour())
-                    .minute(newSelection.minute())
-                    .second(newSelection.second());
-                setFmDate(updatedDate.toDate());
-            }}
-            timeZoneName={timezone}
-        />
-        {pickerStyle === 'list' && (
+        {pickerMode === 'list' && (
             <CustomPickerModal
                 isVisible={pickerVisible}
                 options={pickerOptions}
@@ -737,7 +707,7 @@ export default function UcmScheduleScreen() {
                 onSelect={onPickerSelect}
             />
         )}
-        {pickerStyle === 'wheel' && (
+        {(pickerMode === 'wheel' || pickerMode === 'time') && (
             <WheelPickerModal
                 isVisible={pickerVisible}
                 options={pickerOptions}
@@ -751,6 +721,14 @@ export default function UcmScheduleScreen() {
                 }
                 onClose={() => setPickerVisible(false)}
                 onSelect={onPickerSelect}
+                mode={pickerMode === 'time' ? 'time' : 'single'}
+                initialTimeValue={
+                    currentPicker === 'imClcPromptTime' ? imClcPromptTime :
+                    currentPicker === 'imClcDate_time' ? imClcDate :
+                    (currentPicker === 'fmDate_time' || currentPicker === 'fmDateOneTime_time') ? fmDate :
+                    new Date()
+                }
+                onTimeSelect={onTimeSelect}
             />
         )}
     </SafeAreaView>
