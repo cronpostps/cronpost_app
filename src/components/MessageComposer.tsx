@@ -3,7 +3,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { TFunction } from 'i18next';
-import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -121,28 +121,6 @@ const MessageComposer = forwardRef<MessageComposerRef, MessageComposerProps>((pr
   const { theme } = useTheme();
   const themeColors = Colors[theme];
   const { user } = useAuth();
-
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-  useEffect(() => {
-      const keyboardDidShowListener = Keyboard.addListener(
-          'keyboardDidShow',
-          (e) => {
-              setKeyboardHeight(e.endCoordinates.height);
-          }
-      );
-      const keyboardDidHideListener = Keyboard.addListener(
-          'keyboardDidHide',
-          () => {
-              setKeyboardHeight(0);
-          }
-      );
-
-      return () => {
-          keyboardDidHideListener.remove();
-          keyboardDidShowListener.remove();
-      };
-  }, []);
-
   const dynamicHeaderTitle = React.useMemo(() => {
     const baseTitle = "✏️";
     const details = [];
@@ -452,7 +430,11 @@ const addRecipient = (email: string) => {
   const s = styles(themeColors);
   return (
     <SafeAreaView style={s.container}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+      <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
         <View style={s.header}>
           <TouchableOpacity onPress={onCancel} disabled={isSending}>
             <Ionicons name="close" size={28} color={isSending ? themeColors.icon : themeColors.text} />
@@ -557,7 +539,7 @@ const addRecipient = (email: string) => {
           </Text>
         </View>
 
-      <View style={[s.toolbarContainer, { paddingBottom: Platform.OS === 'ios' ? keyboardHeight : 0 }]}>
+      <View style={s.toolbarContainer}>
         <RichToolbar
           editor={richText}
           actions={[
