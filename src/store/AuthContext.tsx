@@ -1,5 +1,5 @@
 // src/store/AuthContext.tsx
-// Version: 2.0.2
+// Version: 2.1.2
 
 import * as Google from 'expo-auth-session/providers/google';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -15,6 +15,7 @@ import i18n from '../locales/i18n';
 import { registerForPushNotificationsAsync } from '../services/notificationService';
 import { translateApiError } from '../utils/errorTranslator';
 import { useTheme } from './ThemeContext';
+import { useIamStore } from './iamStore';
 
 interface User {
   id: string;
@@ -117,6 +118,7 @@ const checkAndUpdateTimezone = async (
 };
 
 export const AuthProvider = ({ children }: React.PropsWithChildren) => {
+    console.log("--- AuthProvider ĐANG RENDER ---");
     const [authState, setAuthState] = useState<{
       accessToken: string | null;
       refreshToken: string | null;
@@ -128,16 +130,13 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
     });
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    // const [isGoogleAuthLoading, setIsGoogleAuthLoading] = useState(false);
     const [isAuthProcessing, setIsAuthProcessing] = useState(false);
-
     const [isAppLocked, setIsAppLocked] = useState(true);
     const [pinModalVisible, setPinModalVisible] = useState(false);
     const [isVerifyingPin, setIsVerifyingPin] = useState(false);
     const [hasShownTimezoneAlert, setHasShownTimezoneAlert] = useState(false);
     const pinModalRef = useRef<PinModalRef>(null);
-    // const router = useRouter();
-    // const segments = useSegments();
+    const hasRegisteredForPush = useRef(false);
     const { theme } = useTheme();
     const themeColors = Colors[theme];
 
@@ -148,7 +147,7 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
         clientId: GoogleAuthConfig.expoClientId, 
     });
 
-    const signOut = async () => {
+    const signOut = useCallback(async () => {
       try { await api.post('/api/auth/signout'); } 
       catch (e: any) { console.error('Sign out API call failed, proceeding with client-side logout.', e); } 
       finally {
@@ -158,15 +157,13 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
         setAuthState({ accessToken: null, refreshToken: null, isAuthenticated: false });
         setIsAppLocked(true);
       }
-    };
+    }, []);
 
     const performAutoCheckinIfNeeded = useCallback(async (userToCheck: User) => {
         if (userToCheck.checkin_on_signin && 
             !userToCheck.use_pin_for_all_actions &&
             userToCheck.account_status === 'ANS_WCT') {
-            
             try {
-                console.log('Performing automatic check-in (Status: WCT)...');
                 await api.post('/api/ucm/check-in', { pin_code: null });
                 Toast.show({
                     type: 'success',
@@ -179,41 +176,38 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
         }
     }, []);
         
-  const handleSuccessfulLogin = useCallback(async (accessToken: string, refreshToken: string) => {
-      await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
-      await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
+    const handleSuccessfulLogin = useCallback(async (accessToken: string, refreshToken: string) => {
+        await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
+        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
 
-      const userResponse = await api.get('/api/users/me');
-      const currentUser: User = userResponse.data;
-      setUser(currentUser);
-      setAuthState({ accessToken: accessToken, refreshToken: refreshToken, isAuthenticated: true });
+        const userResponse = await api.get('/api/users/me');
+        const currentUser: User = userResponse.data;
+        setUser(currentUser);
+        setAuthState({ accessToken: accessToken, refreshToken: refreshToken, isAuthenticated: true });
+        useIamStore.getState().fetchUnreadCount();
+        await performAutoCheckinIfNeeded(currentUser);
 
-      await performAutoCheckinIfNeeded(currentUser);
+        const biometricsKey = `biometrics_enabled_for_${currentUser.id}`;
+        const isBiometricsEnabled = await SecureStore.getItemAsync(biometricsKey);
 
-      // --- BẮT ĐẦU ĐOẠN MÃ CẦN THÊM ---
-      const biometricsKey = `biometrics_enabled_for_${currentUser.id}`;
-      const isBiometricsEnabled = await SecureStore.getItemAsync(biometricsKey);
-
-      if (currentUser.has_pin) {
-          setIsAppLocked(true); // Đảm bảo app ở trạng thái khóa
-          if (isBiometricsEnabled === 'true') {
-              const result = await LocalAuthentication.authenticateAsync({
-                  promptMessage: i18n.t('biometrics.prompt_message'),
-              });
-              if (result.success) {
-                  setIsAppLocked(false);
-              } else {
-                  setPinModalVisible(true);
-              }
-          } else {
-              setPinModalVisible(true);
-          }
-      } else {
-          setIsAppLocked(false);
-      }
-      // --- KẾT THÚC ĐOẠN MÃ CẦN THÊM ---
-
-  }, [performAutoCheckinIfNeeded]);
+        if (currentUser.has_pin) {
+            setIsAppLocked(true);
+            if (isBiometricsEnabled === 'true') {
+                const result = await LocalAuthentication.authenticateAsync({
+                    promptMessage: i18n.t('biometrics.prompt_message'),
+                });
+                if (result.success) {
+                    setIsAppLocked(false);
+                } else {
+                    setPinModalVisible(true);
+                }
+            } else {
+                setPinModalVisible(true);
+            }
+        } else {
+            setIsAppLocked(false);
+        }
+    }, [performAutoCheckinIfNeeded]);
     
     useEffect(() => {
       const handleGoogleResponse = async () => {
@@ -228,12 +222,14 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
               await handleSuccessfulLogin(access_token, refresh_token);
             }
           } else if (response?.type === 'error') {
-            console.error("Google Auth Error:", response.error);
             Alert.alert("Google Sign-In Error", "An error occurred during Google authentication.");
           }
         } catch (error: any) {
-          console.error("Google Sign-In failed on backend:", error);
-          Alert.alert("Google Sign-In Failed", "Could not sign in with Google. Please try again.");
+          const friendlyError = translateApiError(error);
+          Alert.alert(
+            i18n.t('signin_page.title'), 
+            i18n.t('signin_page.status.google_oauth_error', { detail: friendlyError })
+          );
         } finally {
           setIsAuthProcessing(false);
         }
@@ -243,82 +239,85 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
   
     useEffect(() => {
       const loadTokens = async () => {
+        console.log("--- Auth: 1. Bắt đầu quá trình tải token ---");
         try {
           const accessToken = await SecureStore.getItemAsync(TOKEN_KEY);
           
           if (accessToken) {
+            console.log("--- Auth: 2. Đã tìm thấy access token ---");
             setAuthState(prev => ({ ...prev, accessToken, isAuthenticated: true }));
-            const userResponse = await api.get('/api/users/me');
-            const currentUser: User = userResponse.data;
-            setUser(currentUser);
             
-            await performAutoCheckinIfNeeded(currentUser);
+            console.log("--- Auth: 3. Đang lấy thông tin người dùng ---");
 
-            const biometricsKey = `biometrics_enabled_for_${currentUser.id}`;
-            const isBiometricsEnabled = await SecureStore.getItemAsync(biometricsKey);
-
-            if (currentUser.has_pin) {
-                setIsAppLocked(true);
-                if (isBiometricsEnabled === 'true') {
-                    const result = await LocalAuthentication.authenticateAsync({
-                        promptMessage: i18n.t('biometrics.prompt_message'),
-                    });
-                    if (result.success) {
-                        setIsAppLocked(false);
-                    } else {
-                        setPinModalVisible(true);
-                    }
-                } else {
-                    setPinModalVisible(true);
-                }
-            } else {
+        try {
+          const userResponse = await api.get('/api/users/me');
+          const currentUser: User = userResponse.data;
+          setUser(currentUser);
+          console.log("--- Auth: 4. Lấy thông tin người dùng thành công. Trạng thái tài khoản:", currentUser.account_status);
+          useIamStore.getState().fetchUnreadCount();
+          await performAutoCheckinIfNeeded(currentUser);
+          const biometricsKey = `biometrics_enabled_for_${currentUser.id}`;
+          const isBiometricsEnabled = await SecureStore.getItemAsync(biometricsKey);
+          if (currentUser.has_pin) {
+            console.log("--- Auth: 5. Người dùng có mã PIN. Chuẩn bị khóa ứng dụng ---");
+            setIsAppLocked(true);
+            if (isBiometricsEnabled === 'true') {
+              const result = await LocalAuthentication.authenticateAsync({
+                promptMessage: i18n.t('biometrics.prompt_message'),
+              });
+              if (result.success) {
                 setIsAppLocked(false);
+              } else {
+                setPinModalVisible(true);
+              }
+            } else {
+              setPinModalVisible(true);
             }
           } else {
+            console.log("--- Auth: 7. Người dùng không có PIN. Mở khóa ứng dụng ---");
+            setIsAppLocked(false);
+          }
+        } catch (apiError: any) {
+          console.error("--- Auth: 3b. LỖI KHI GỌI API, TIẾN HÀNH ĐĂNG XUẤT ---:", apiError.message);
+          throw apiError;
+        }
+      } else {
+            console.log("--- Auth: 2. Không tìm thấy access token ---");
             setAuthState({ accessToken: null, refreshToken: null, isAuthenticated: false });
             setIsAppLocked(false);
           }
-
-        } catch {
-          signOut();
+        } catch (error) {
+          console.error("--- Auth: LỖI trong quá trình loadTokens, thực hiện signOut ---", error);
+          await signOut();
         } finally {
+          console.log("--- Auth: 8. Kết thúc quá trình tải token ---");
           setIsLoading(false);
         }
       };
       loadTokens();
-    }, [performAutoCheckinIfNeeded]);
+    }, [performAutoCheckinIfNeeded, signOut]);
     
     useEffect(() => {
-      if (user && !isLoading) { 
+       if (user && !isLoading && !hasRegisteredForPush.current) { 
         checkAndUpdateTimezone(user, setUser, hasShownTimezoneAlert, setHasShownTimezoneAlert);
         if (user.notifications_enabled) {
           console.log('User has notifications enabled. Registering for push notifications...');
-          registerForPushNotificationsAsync();        
+          registerForPushNotificationsAsync();     
+          hasRegisteredForPush.current = true;   
         }
       }
     }, [user, isLoading, hasShownTimezoneAlert]);
-  
-    // useEffect(() => {
-    //   if (isLoading) return;
-    //   const inAuthGroup = segments[0] === '(main)';
-    //   if (authState.isAuthenticated && !inAuthGroup) { router.replace('/(main)/dashboard'); } 
-    //   else if (!authState.isAuthenticated && inAuthGroup) { router.replace('/'); }
-    // }, [authState.isAuthenticated, isLoading, segments, router]);
   
     const signIn = async (email: string, password: string) => {
       try {
         const response = await api.post('/api/auth/signin', { email, password });
         const { access_token, refresh_token } = response.data;
         await handleSuccessfulLogin(access_token, refresh_token);
-      } catch (e: any) { console.error('Sign in failed', e); throw e; }
+      } catch (e: any) { throw e; }
     };
   
-    // const signInWithGoogle = async () => {
-    //   setIsGoogleAuthLoading(true);
-    //   await promptAsync();
-    // };
     const signInWithGoogle = async () => {
-      setIsAuthProcessing(true); // <-- THÊM DÒNG NÀY
+      setIsAuthProcessing(true);
       await promptAsync();
     };
   
@@ -328,8 +327,7 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
           setUser(userResponse.data);
           return userResponse.data;
       } catch (error: any) {
-          console.error("Failed to refresh user data", error);
-          if (error.response?.status === 401) { signOut(); }
+          if ((error as any).response?.status === 401) {await signOut(); }
           return null;
       }
     };
@@ -346,17 +344,8 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
             setPinModalVisible(false);
             setIsAppLocked(false);
         } catch (error: any) {
-            Alert.alert(
-                i18n.t('pin_modal.header'),
-                translateApiError(error),
-                [
-                    {
-                        text: 'OK',
-                        onPress: () => {
-                            pinModalRef.current?.resetPin();
-                        },
-                    },
-                ]
+            Alert.alert(i18n.t('pin_modal.header'), translateApiError(error),
+                [{ text: 'OK', onPress: () => pinModalRef.current?.resetPin() }]
             );
         } finally {
             setIsVerifyingPin(false);
@@ -371,35 +360,62 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
             justifyContent: 'center',
             alignItems: 'center',
             backgroundColor: themeColors.background,
+        },
+        overlay: {
+            ...StyleSheet.absoluteFillObject,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: themeColors.background,
+            zIndex: 10,
         }
     });
 
-    if (isLoading) {
-      return <View style={styles.lockScreenContainer}><ActivityIndicator size="large" /></View>;
-    }
+    // if (isLoading) {
+    //   return <View style={styles.lockScreenContainer}><ActivityIndicator size="large" /></View>;
+    // }
     
-    if (authState.isAuthenticated && isAppLocked) {
-        return (
-            <View style={styles.lockScreenContainer}>
-                <PinModal
-                    ref={pinModalRef} 
-                    isVisible={pinModalVisible}
-                    onClose={handlePinClose}
-                    onSubmit={handlePinSubmit}
-                    promptText={i18n.t('pin_modal.prompt_security_verification')}
-                />
-                {!pinModalVisible && <ActivityIndicator size="large" />}
-            </View>
-        );
-    }
-
-  // if (isGoogleAuthLoading) {
-  //   return (
-  //     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-  //       <ActivityIndicator size="large" />
-  //     </View>
-  //   );
-  // }
+    // if (authState.isAuthenticated && isAppLocked) {
+    //     return (
+    //         <View style={styles.lockScreenContainer}>
+    //             <PinModal
+    //                 ref={pinModalRef} 
+    //                 isVisible={pinModalVisible}
+    //                 onClose={handlePinClose}
+    //                 onSubmit={handlePinSubmit}
+    //                 promptText={i18n.t('pin_modal.prompt_security_verification')}
+    //             />
+    //             {!pinModalVisible && <ActivityIndicator size="large" />}
+    //         </View>
+    //     );
+    // }
   
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    // --- BẮT ĐẦU THAY THẾ PHẦN RETURN ---
+    return (
+      <AuthContext.Provider value={value}>
+        {/* Render nội dung chính của ứng dụng một cách vô điều kiện */}
+        {children}
+
+        {/* Render lớp phủ loading nếu isLoading là true */}
+        {isLoading && (
+          <View style={styles.overlay}>
+            <ActivityIndicator size="large" color={themeColors.tint} />
+          </View>
+        )}
+
+        {/* Render lớp phủ khóa PIN nếu cần */}
+        {authState.isAuthenticated && isAppLocked && (
+          <View style={styles.overlay}>
+            <PinModal
+              ref={pinModalRef}
+              isVisible={pinModalVisible}
+              onClose={handlePinClose}
+              onSubmit={handlePinSubmit}
+              promptText={i18n.t('pin_modal.prompt_security_verification')}
+            />
+            {!pinModalVisible && <ActivityIndicator size="large" color={themeColors.tint} />}
+          </View>
+        )}
+      </AuthContext.Provider>
+    );
+    // --- KẾT THÚC THAY THẾ ---
 };

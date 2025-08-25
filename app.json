@@ -31,7 +31,15 @@
               "com.cronpost.app"
             ]
           }
-        ]
+        ],
+        "NSAppTransportSecurity": {
+          "NSExceptionDomains": {
+            "cronpost.com": {
+              "NSExceptionAllowsInsecureHTTPLoads": false,
+              "NSExceptionMinimumTLSVersion": "TLSv1.2"
+            }
+          }
+        }
       },
       "entitlements": {
         "aps-environment": "development"

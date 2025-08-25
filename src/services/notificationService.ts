@@ -7,7 +7,11 @@ import api from '../api/api';
 
 async function requestUserPermission(): Promise<boolean> {
   if (Platform.OS === 'ios') {
-    const authStatus = await messaging().requestPermission();
+    const authStatus = await messaging().requestPermission({
+      sound: true,
+      alert: true,
+      badge: true,
+    });
     return (
       authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
       authStatus === messaging.AuthorizationStatus.PROVISIONAL

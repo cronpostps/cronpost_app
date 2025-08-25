@@ -29,11 +29,11 @@ export const useIamStore = create<IamState>((set) => ({
     })),
 
   fetchUnreadCount: async () => {
-    const token = api.defaults.headers.common['Authorization'];
-    if (!token) {
-      console.log('Skipping fetchUnreadCount because user is not authenticated yet.');
-      return;
-    }
+    // const token = api.defaults.headers.common['Authorization'];
+    // // if (!token) {
+    // //   console.log('Skipping fetchUnreadCount because user is not authenticated yet.');
+    // //   return;
+    // // }
 
     set({ isLoadingUnread: true, error: null });
     try {
