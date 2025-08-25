@@ -30,6 +30,7 @@ import { useAuth } from '../../../src/store/AuthContext';
 import { useTheme } from '../../../src/store/ThemeContext';
 import { translateApiError } from '../../../src/utils/errorTranslator';
 
+
 dayjs.extend(relativeTime);
 
 export type UserAccountStatus = 'INS' | 'ANS_CLC' | 'ANS_WCT' | 'FNS';
@@ -315,7 +316,20 @@ export default function UcmScreen() {
       }
   }, [router, t]);
 
-  useFocusEffect(useCallback(() => { setIsLoading(true); fetchData(); }, [fetchData]));
+  // useFocusEffect(useCallback(() => { setIsLoading(true); fetchData(); }, [fetchData]));
+
+  // useEffect(() => {
+  //   // Chỉ fetch dữ liệu khi có thông tin người dùng
+  //   if (user) {
+  //     setIsLoading(true);
+  //     fetchData();
+  //   }
+  // }, [user, fetchData]);
+
+  useFocusEffect(useCallback(() => {
+    setIsLoading(true);
+    fetchData();
+  }, [fetchData]));
 
   const onRefresh = useCallback(() => { setIsRefreshing(true); fetchData(true); }, [fetchData]);
 
@@ -659,7 +673,7 @@ export default function UcmScreen() {
     </View>
   );
 
-    if (isLoading) return <View style={[styles.container, styles.centered]}><ActivityIndicator size="large" color={themeColors.tint} /></View>;
+    // if (isLoading) return <View style={[styles.container, styles.centered]}><ActivityIndicator size="large" color={themeColors.tint} /></View>;
 
     return (
         <SafeAreaView style={styles.container}>

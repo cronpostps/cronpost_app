@@ -1,5 +1,5 @@
 // app/_layout.tsx
-// Version: 2.1.0 (FINAL)
+// Version: 2.1.1
 
 import { Ionicons } from '@expo/vector-icons';
 import messaging from '@react-native-firebase/messaging';
@@ -19,7 +19,6 @@ import { AuthProvider, useAuth } from '../src/store/AuthContext';
 import { ThemeProvider, useTheme } from '../src/store/ThemeContext';
 import { useIamStore } from '../src/store/iamStore';
 
-// Giữ màn hình splash cho đến khi quá trình khởi tạo hoàn tất
 SplashScreen.preventAutoHideAsync();
 
 declare global {
@@ -27,10 +26,9 @@ declare global {
 }
 globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
 
-// Component nội bộ chứa tất cả logic và các hooks
 function RootLayoutNav() {
   console.log("--- RootLayoutNav ĐANG RENDER ---");
-  const { user, isAuthenticated, isLoading, isAuthProcessing } = useAuth();
+  const { isAuthenticated, isLoading, isAuthProcessing } = useAuth();
   const { theme } = useTheme();
   const segments = useSegments();
   const router = useRouter();
@@ -41,14 +39,12 @@ function RootLayoutNav() {
     ...Ionicons.font,
   });
 
-  // Effect để ẩn Splash Screen
   useEffect(() => {
     if ((!isLoading && !isAuthProcessing) && (fontsLoaded || fontError)) {
       SplashScreen.hideAsync();
     }
   }, [isLoading, isAuthProcessing, fontsLoaded, fontError]);
   
-  // Effect để xử lý thông báo đẩy (push notification)
   useEffect(() => {
     if (!router) return;
 
@@ -88,35 +84,28 @@ function RootLayoutNav() {
     };
   }, [router]);
 
-
-  // Effect để xử lý điều hướng (navigation) dựa trên trạng thái xác thực
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   useEffect(() => {
-    if (isLoading || !isMounted) return;
+    if (isLoading || !isMounted) {
+      return;
+    }
 
-    const inMainGroup = segments[0] === '(main)';
-    const inFnsScreen = segments[0] === 'fns';
+    const inAuthScreens = segments[0] === '(main)';
 
-    if (isAuthenticated) {
-      if (user?.account_status === 'FNS' && !inFnsScreen) {
-        router.replace('/fns');
-      } else if (user?.account_status !== 'FNS' && inFnsScreen) {
-        router.replace('/(main)/dashboard');
-      } else if (!inMainGroup && !inFnsScreen) {
-        router.replace('/(main)/dashboard');
-      }
-    } else {
-      if (inMainGroup || inFnsScreen) {
+    if (!isAuthenticated) {
+      if (inAuthScreens) {
         router.replace('/');
       }
+    } else {
+      if (!inAuthScreens) {
+        router.replace('/(main)/dashboard');
+      }
     }
-  }, [user, isAuthenticated, isLoading, segments, router, isMounted]);
+  }, [isAuthenticated, isLoading, segments, router, isMounted]);
 
-
-  // Hiển thị màn hình loading trong khi chờ xử lý
   if (isLoading || isAuthProcessing || (!fontsLoaded && !fontError)) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: themeColors.background }}>
@@ -141,7 +130,6 @@ function RootLayoutNav() {
   );
 }
 
-// Component RootLayout chính, chỉ chứa các Provider
 export default function RootLayout() {
   console.log("--- RootLayout ĐANG RENDER ---");
   return (

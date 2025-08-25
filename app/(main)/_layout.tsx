@@ -1,14 +1,14 @@
 // app/(main)/_layout.tsx
-// version 1.0.0
+// version 1.1.0
 
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
+import Toast from 'react-native-toast-message';
 import { Colors } from '../../src/constants/Colors';
-// import { useRouter } from 'expo-router';
-// import { useAuth } from '../../src/store/AuthContext';
+import { useAuth } from '../../src/store/AuthContext';
 import { useTheme } from '../../src/store/ThemeContext';
 import { useIamStore } from '../../src/store/iamStore';
 
@@ -17,8 +17,7 @@ export default function MainTabLayout() {
   const themeColors = Colors[theme];
   const { t } = useTranslation();
   const { unreadCount } = useIamStore();
-  // const { user } = useAuth();
-  // const router = useRouter();
+  const { user } = useAuth();
 
   return (
     <Tabs
@@ -31,7 +30,6 @@ export default function MainTabLayout() {
         },
         headerShown: false,
       }}
-      // --- DI CHUYỂN RA NGOÀI VÀ ĐẶT Ở ĐÂY ---
       safeAreaInsets={{
         bottom: 5 
       }}
@@ -43,7 +41,7 @@ export default function MainTabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'home' : 'home-outline'}
-              size={24}
+              size={30}
               color={color}
             />
           ),
@@ -56,23 +54,34 @@ export default function MainTabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'shield-checkmark' : 'shield-checkmark-outline'}
-              size={24}
+              size={30}
               color={color}
             />
           ),
+        }}
+        listeners={{
+          tabPress: (e) => {
+            if (user?.account_status === 'FNS') {
+              e.preventDefault();
+              Toast.show({
+                type: 'error',
+                text1: t('fns_page.card_title'),
+                text2: t('fns_page.p1'),
+                visibilityTime: 3000,
+              });
+            }
+          },
         }}
       />
       <Tabs.Screen
         name="iam"
         options={{
           title: t('tabs.iam'),
-          // --- 3. BẮT ĐẦU THÊM ---
           tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
-          // --- KẾT THÚC THÊM ---
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'chatbubbles' : 'chatbubbles-outline'}
-              size={24}
+              size={30}
               color={color}
             />
           ),
@@ -85,7 +94,7 @@ export default function MainTabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'timer' : 'timer-outline'}
-              size={24}
+              size={30}
               color={color}
             />
           ),
@@ -98,7 +107,7 @@ export default function MainTabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'settings' : 'settings-outline'}
-              size={24}
+              size={30}
               color={color}
             />
           ),
