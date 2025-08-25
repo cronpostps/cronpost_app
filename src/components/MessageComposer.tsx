@@ -10,8 +10,10 @@ import {
   Alert,
   FlatList,
   Keyboard,
+  KeyboardAvoidingView,
   // KeyboardAvoidingView,
   Modal,
+  Platform,
   // Platform,
   SafeAreaView,
   ScrollView,
@@ -28,12 +30,12 @@ import {
   RichToolbar,
 } from 'react-native-pell-rich-editor';
 import Toast from 'react-native-toast-message';
+
 import api from '../api/api';
 import { Colors, Theme } from '../constants/Colors';
 import { useAuth } from '../store/AuthContext';
 import { useTheme } from '../store/ThemeContext';
 import { translateApiError } from '../utils/errorTranslator';
-
 export interface MessageComposerRef {
   getData: () => Promise<MessageData>;
   hasUnsavedChanges: () => Promise<boolean>;
@@ -431,6 +433,10 @@ const addRecipient = (email: string) => {
   const s = styles(themeColors);
   return (
     <SafeAreaView style={s.container}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+          style={{ flex: 1 }}
+        >
       <View style={{ flex: 1 }}>
         <View style={s.header}>
           <TouchableOpacity onPress={onCancel} disabled={isSending}>
@@ -564,14 +570,13 @@ const addRecipient = (email: string) => {
             onChange={handleContentChange}
           />
         </View>
-
-
       </View>
 
       <ContactPickerModal visible={modalVisible.contacts} onClose={() => setModalVisible(p => ({...p, contacts: false}))} contacts={contacts} isLoading={isLoading.contacts} onSelect={handleSelectContact} t={t} themeColors={themeColors} />
       <FilePickerModal visible={modalVisible.files} onClose={() => setModalVisible(p => ({...p, files: false}))} files={userFiles} isLoading={isLoading.files} onSelect={handleSelectFiles} t={t} themeColors={themeColors} />
       <QuotePickerModal visible={modalVisible.quotes} onClose={() => setModalVisible(p => ({...p, quotes: false}))} groupedFolders={groupedQuoteFolders} isLoading={isLoading.quotes} onSelect={handleSelectQuoteFolder} t={t} themeColors={themeColors} />
       <Toast />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 });
