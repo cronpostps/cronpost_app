@@ -3,16 +3,17 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { TFunction } from 'i18next';
-import React, { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   FlatList,
   Keyboard,
-  KeyboardAvoidingView,
+  // KeyboardAvoidingView,
   Modal,
-  Platform,
+  // Platform,
   SafeAreaView,
   ScrollView,
   SectionList,
@@ -121,6 +122,36 @@ const MessageComposer = forwardRef<MessageComposerRef, MessageComposerProps>((pr
   const { theme } = useTheme();
   const themeColors = Colors[theme];
   const { user } = useAuth();
+
+  const keyboardHeightAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+      const keyboardWillShowListener = Keyboard.addListener(
+          'keyboardWillShow',
+          (e) => {
+              Animated.timing(keyboardHeightAnim, {
+                  toValue: e.endCoordinates.height,
+                  duration: e.duration,
+                  useNativeDriver: false,
+              }).start();
+          }
+      );
+      const keyboardWillHideListener = Keyboard.addListener(
+          'keyboardWillHide',
+          (e) => {
+              Animated.timing(keyboardHeightAnim, {
+                  toValue: 0,
+                  duration: e.duration,
+                  useNativeDriver: false,
+              }).start();
+          }
+      );
+
+      return () => {
+          keyboardWillHideListener.remove();
+          keyboardWillShowListener.remove();
+      };
+  }, [keyboardHeightAnim]);
+
   const dynamicHeaderTitle = React.useMemo(() => {
     const baseTitle = "✏️";
     const details = [];
@@ -430,11 +461,7 @@ const addRecipient = (email: string) => {
   const s = styles(themeColors);
   return (
     <SafeAreaView style={s.container}>
-      <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
-          style={{ flex: 1 }}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
+      <Animated.View style={{ flex: 1, paddingBottom: keyboardHeightAnim }}>
         <View style={s.header}>
           <TouchableOpacity onPress={onCancel} disabled={isSending}>
             <Ionicons name="close" size={28} color={isSending ? themeColors.icon : themeColors.text} />
@@ -563,7 +590,7 @@ const addRecipient = (email: string) => {
           </TouchableOpacity>
         </View>
       </View>
-      </KeyboardAvoidingView>
+      </Animated.View>
 
       <ContactPickerModal visible={modalVisible.contacts} onClose={() => setModalVisible(p => ({...p, contacts: false}))} contacts={contacts} isLoading={isLoading.contacts} onSelect={handleSelectContact} t={t} themeColors={themeColors} />
       <FilePickerModal visible={modalVisible.files} onClose={() => setModalVisible(p => ({...p, files: false}))} files={userFiles} isLoading={isLoading.files} onSelect={handleSelectFiles} t={t} themeColors={themeColors} />
