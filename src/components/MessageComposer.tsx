@@ -3,12 +3,11 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { TFunction } from 'i18next';
-import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   FlatList,
   Keyboard,
   // KeyboardAvoidingView,
@@ -21,7 +20,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import {
   actions,
@@ -122,36 +121,7 @@ const MessageComposer = forwardRef<MessageComposerRef, MessageComposerProps>((pr
   const { theme } = useTheme();
   const themeColors = Colors[theme];
   const { user } = useAuth();
-
-  const keyboardHeightAnim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-      const keyboardWillShowListener = Keyboard.addListener(
-          'keyboardWillShow',
-          (e) => {
-              Animated.timing(keyboardHeightAnim, {
-                  toValue: e.endCoordinates.height,
-                  duration: e.duration,
-                  useNativeDriver: false,
-              }).start();
-          }
-      );
-      const keyboardWillHideListener = Keyboard.addListener(
-          'keyboardWillHide',
-          (e) => {
-              Animated.timing(keyboardHeightAnim, {
-                  toValue: 0,
-                  duration: e.duration,
-                  useNativeDriver: false,
-              }).start();
-          }
-      );
-
-      return () => {
-          keyboardWillHideListener.remove();
-          keyboardWillShowListener.remove();
-      };
-  }, [keyboardHeightAnim]);
-
+  
   const dynamicHeaderTitle = React.useMemo(() => {
     const baseTitle = "✏️";
     const details = [];
@@ -461,7 +431,7 @@ const addRecipient = (email: string) => {
   const s = styles(themeColors);
   return (
     <SafeAreaView style={s.container}>
-      <Animated.View style={{ flex: 1, paddingBottom: keyboardHeightAnim }}>
+      <View style={{ flex: 1 }}>
         <View style={s.header}>
           <TouchableOpacity onPress={onCancel} disabled={isSending}>
             <Ionicons name="close" size={28} color={isSending ? themeColors.icon : themeColors.text} />
@@ -536,6 +506,38 @@ const addRecipient = (email: string) => {
           </Text>
         </View>
 
+        <View style={s.toolbarContainer}>
+          <RichToolbar
+            editor={richText}
+            actions={[
+              actions.setBold,
+              actions.setItalic,
+              actions.setUnderline,
+              actions.insertBulletsList,
+              actions.insertOrderedList,
+            ]}
+            style={s.richEditorToolbar}
+            selectedIconTint={themeColors.tint}
+            iconTint={themeColors.icon}
+            disabled={isSending}
+          />
+          <View style={s.customActionsContainer}>
+            <TouchableOpacity onPress={fetchUserFiles} disabled={isSending || isLoading.files} style={s.toolbarButton}>
+                {isLoading.files ? <ActivityIndicator size="small" color={themeColors.tint} /> : <Ionicons name="attach" size={22} color={themeColors.tint} />}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={fetchQuoteFolders} disabled={isSending || isLoading.quotes} style={s.toolbarButton}>
+                {isLoading.quotes ? <ActivityIndicator size="small" color={themeColors.tint} /> : <Ionicons name="bookmark-outline" size={22} color={themeColors.tint} />}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={s.charCountContainer}>
+          <Text style={[s.counterText, contentCharCount > limits.content && s.errorText]}>
+              {contentCharCount}/{limits.content}
+          </Text>
+        </View>
+
+
         {attachments.length > 0 && (
           <View style={s.attachmentsContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -561,36 +563,10 @@ const addRecipient = (email: string) => {
             useContainer={false}
             onChange={handleContentChange}
           />
-          <Text style={[s.counterText, contentCharCount > limits.content && s.errorText]}>
-              {contentCharCount}/{limits.content}
-          </Text>
         </View>
 
-      <View style={s.toolbarContainer}>
-        <RichToolbar
-          editor={richText}
-          actions={[
-            actions.setBold,
-            actions.setItalic,
-            actions.setUnderline,
-            actions.insertBulletsList,
-            actions.insertOrderedList,
-          ]}
-          style={s.richEditorToolbar}
-          selectedIconTint={themeColors.tint}
-          iconTint={themeColors.icon}
-          disabled={isSending}
-        />
-        <View style={s.customActionsContainer}>
-          <TouchableOpacity onPress={fetchUserFiles} disabled={isSending || isLoading.files} style={s.toolbarButton}>
-              {isLoading.files ? <ActivityIndicator size="small" color={themeColors.tint} /> : <Ionicons name="attach" size={22} color={themeColors.tint} />}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={fetchQuoteFolders} disabled={isSending || isLoading.quotes} style={s.toolbarButton}>
-              {isLoading.quotes ? <ActivityIndicator size="small" color={themeColors.tint} /> : <Ionicons name="bookmark-outline" size={22} color={themeColors.tint} />}
-          </TouchableOpacity>
-        </View>
+
       </View>
-      </Animated.View>
 
       <ContactPickerModal visible={modalVisible.contacts} onClose={() => setModalVisible(p => ({...p, contacts: false}))} contacts={contacts} isLoading={isLoading.contacts} onSelect={handleSelectContact} t={t} themeColors={themeColors} />
       <FilePickerModal visible={modalVisible.files} onClose={() => setModalVisible(p => ({...p, files: false}))} files={userFiles} isLoading={isLoading.files} onSelect={handleSelectFiles} t={t} themeColors={themeColors} />
@@ -778,6 +754,13 @@ const styles = (themeColors: Theme) => StyleSheet.create({
       backgroundColor: themeColors.background,
       borderTopWidth: 1,
       borderTopColor: themeColors.inputBorder,
+    },
+    charCountContainer: {
+      alignItems: 'flex-end',
+      paddingRight: 15,
+      paddingVertical: 5,
+      borderBottomWidth: 1,
+      borderBottomColor: themeColors.inputBorder,
     },
     counterText: {
       color: themeColors.icon,
