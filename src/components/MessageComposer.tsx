@@ -1,9 +1,9 @@
 // src/components/MessageComposer.tsx
-// Version: 1.4.1
+// Version: 1.5.1
 
 import { Ionicons } from '@expo/vector-icons';
 import { TFunction } from 'i18next';
-import React, { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -121,6 +121,27 @@ const MessageComposer = forwardRef<MessageComposerRef, MessageComposerProps>((pr
   const { theme } = useTheme();
   const themeColors = Colors[theme];
   const { user } = useAuth();
+
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+      const keyboardDidShowListener = Keyboard.addListener(
+          'keyboardDidShow',
+          (e) => {
+              setKeyboardHeight(e.endCoordinates.height);
+          }
+      );
+      const keyboardDidHideListener = Keyboard.addListener(
+          'keyboardDidHide',
+          () => {
+              setKeyboardHeight(0);
+          }
+      );
+
+      return () => {
+          keyboardDidHideListener.remove();
+          keyboardDidShowListener.remove();
+      };
+  }, []);
 
   const dynamicHeaderTitle = React.useMemo(() => {
     const baseTitle = "✏️";
@@ -536,7 +557,7 @@ const addRecipient = (email: string) => {
           </Text>
         </View>
 
-      <View style={s.toolbarContainer}>
+      <View style={[s.toolbarContainer, { paddingBottom: Platform.OS === 'ios' ? keyboardHeight : 0 }]}>
         <RichToolbar
           editor={richText}
           actions={[
