@@ -28,11 +28,12 @@ export default function MainTabLayout() {
         tabBarStyle: {
           backgroundColor: themeColors.card,
           borderTopColor: themeColors.inputBorder,
-          // height: 50,
-          paddingBottom: 1,
-          paddingTop: 1,
         },
         headerShown: false,
+      }}
+      // --- DI CHUYỂN RA NGOÀI VÀ ĐẶT Ở ĐÂY ---
+      safeAreaInsets={{
+        bottom: 5 
       }}
     >
       <Tabs.Screen
