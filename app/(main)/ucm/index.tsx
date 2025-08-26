@@ -343,7 +343,16 @@ export default function UcmScreen() {
                   const endpoint = action === 'delete' ? '/api/ucm/im' : `/api/ucm/im/${action}`;
                   const method = action === 'delete' ? 'DELETE' : 'POST';
                   await api.request({ url: endpoint, method, data: {} });
-                  Toast.show({ type: 'success', text2: t('ucm_page.prompts.action_success', { action }) });
+                  
+                  let successMessage = '';
+                  if (action === 'check-in') {
+                      successMessage = t('ucm_page.prompts.checkin_success');
+                  } else {
+                      const translatedAction = t(`ucm_page.im_section.btn_${action.replace('-', '')}`);
+                      successMessage = t('ucm_page.prompts.action_success', { action: translatedAction });
+                  }
+                  Toast.show({ type: 'success', text2: successMessage });
+                  
                   await fetchData(true);
               } catch (error) { Alert.alert(t('errors.title_error'), translateApiError(error)); } finally { setActionLoading(null); }
           }}
@@ -495,7 +504,10 @@ export default function UcmScreen() {
                   const endpoint = action === 'delete' ? `/api/ucm/fm/${fmId}` : `/api/ucm/fm/${fmId}/cancel`;
                   const method = action === 'delete' ? 'DELETE' : 'POST';
                   await api.request({ url: endpoint, method });
-                  Toast.show({ type: 'success', text2: t('ucm_page.prompts.fm_delete_success') });
+                  const successMessage = action === 'delete' 
+                      ? t('ucm_page.prompts.fm_delete_success') 
+                      : t('ucm_page.prompts.fm_cancel_success');
+                  Toast.show({ type: 'success', text2: successMessage });
                   await fetchData(true);
               } catch (error) { Alert.alert(t('errors.title_error'), translateApiError(error)); } finally { setActionLoading(null); }
           }}
