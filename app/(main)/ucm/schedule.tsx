@@ -403,7 +403,7 @@ export default function UcmScheduleScreen() {
             }
             
             Toast.show({ type: 'success', text2: t('prompts.ucm_save_success')});
-            router.replace({ pathname: '/(main)/ucm' });
+            router.navigate({ pathname: '/(main)/ucm' });
 
         } catch (error) {
             Alert.alert(t('errors.title_error'), translateApiError(error));

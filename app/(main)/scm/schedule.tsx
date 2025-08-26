@@ -307,7 +307,7 @@ export default function ScmScheduleScreen() {
         text1: t('scm_page.schedule_success_title'),
         text2: t('scm_page.schedule_success_body')
       });
-      router.replace('/(main)/scm');
+      router.navigate('/(main)/scm');
 
     } catch (error) {
       Alert.alert(t('errors.title_error'), translateApiError(error));
