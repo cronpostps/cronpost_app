@@ -276,7 +276,7 @@ export default function ScmScreen() {
         ]);
       } else {
         await api.post(`/api/scm/${scmId}/status`, { action });
-        Toast.show({ type: 'success', text2: t('scm_page.success_action', { action: t(`action_${action}`) }) });
+        Toast.show({ type: 'success', text2: t('scm_page.success_action', { action: t(`scm_page.action_${action}`) }) });
         await fetchData();
       }
     } catch (error) {
