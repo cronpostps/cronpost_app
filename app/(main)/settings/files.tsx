@@ -1,3 +1,6 @@
+// app/(main)/settings/files.tsx
+// version 1.0.1
+
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
@@ -10,6 +13,7 @@ import {
     ActivityIndicator,
     Alert,
     FlatList,
+    Platform,
     SafeAreaView,
     StyleSheet,
     Text,
@@ -36,7 +40,7 @@ interface UploadTask {
     progress: number;
     fileName: string;
     state: 'uploading' | 'error' | 'completed';
-    task: any; // Giữ task của RNBlobUtil để có thể hủy
+    task: any;
 }
 
 const formatBytes = (bytes: number, decimals = 2) => {
@@ -97,20 +101,17 @@ export default function FileManagementScreen() {
         try {
             const result = await DocumentPicker.getDocumentAsync({ multiple: true, copyToCacheDirectory: true });
             if (result.canceled || !result.assets) return;
-
-            // THAY ĐỔI 1: Sử dụng đúng key là 'accessToken'
             const token = await SecureStore.getItemAsync('accessToken');
-            
             if (!token) {
                 Toast.show({ type: 'error', text1: t('errors.title_error'), text2: 'Authentication token not found.' });
                 return;
             }
-
             for (const asset of result.assets) {
                 const uploadId = `${Date.now()}-${asset.name}`;
-                
+
+                const fileUri = Platform.OS === 'ios' ? asset.uri.replace('file://', '') : asset.uri;
+
                 const uploadTask = RNBlobUtil.fetch('POST', `${api.defaults.baseURL}/api/files/upload`, {
-                    // THAY ĐỔI 2: Thêm tiền tố 'Bearer ' vào trước token
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data',
                 }, [
@@ -118,7 +119,7 @@ export default function FileManagementScreen() {
                         name: 'files',
                         filename: asset.name,
                         type: asset.mimeType || 'application/octet-stream',
-                        data: RNBlobUtil.wrap(asset.uri)
+                        data: RNBlobUtil.wrap(fileUri)
                     }
                 ]);
 

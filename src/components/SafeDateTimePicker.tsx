@@ -46,7 +46,6 @@ export default function SafeDateTimePicker({
     return null;
   }
 
-  // --- NEW LOGIC FOR iOS ---
   if (Platform.OS === 'ios' && mode === 'date') {
     const styles = createStyles(themeColors);
     return (
@@ -73,7 +72,6 @@ export default function SafeDateTimePicker({
       </Modal>
     );
   }
-  // --- END NEW LOGIC ---
 
   return (
     <DateTimePicker

@@ -1,5 +1,5 @@
 // app/(main)/ucm/index.tsx
-// Version: 4.0.8
+// Version: 4.1.0
 
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
@@ -9,16 +9,16 @@ import { TFunction } from 'i18next';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  RefreshControl,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 
@@ -349,40 +349,6 @@ export default function UcmScreen() {
       ]);
   }, [t, fetchData]);
 
-  // Bắt đầu đoạn mã cần bổ sung
-
-  const handleReactivateUnloopedIM = useCallback(async (imToReactivate: InitialMessage) => {
-    if (!imToReactivate?.schedule) {
-        Alert.alert(t('errors.title_error'), 'Missing schedule data to reactivate.');
-        return;
-    }
-    
-    setActionLoading('im_action');
-    try {
-        // Xây dựng lại payload schedule từ dữ liệu hiện có để gửi đến API cập nhật
-        const schedulePayload = {
-            ...imToReactivate.schedule,
-            // Backend yêu cầu trường datetime, ta cần đảm bảo định dạng đúng
-            clc_specific_date: imToReactivate.schedule.clc_specific_date,
-            clc_prompt_time: imToReactivate.schedule.clc_specific_date, // Đối với unloop, thời gian đã nằm trong clc_specific_date
-        };
-
-        // Gọi API cập nhật thay vì API kích hoạt
-        await api.put('/api/ucm/im', { schedule: schedulePayload });
-        
-        const translatedAction = t('ucm_page.im_section.btn_activate');
-        Toast.show({ type: 'success', text2: t('ucm_page.prompts.action_success', { action: translatedAction }) });
-        await fetchData(true);
-
-    } catch (error) {
-        Alert.alert(t('errors.title_error'), translateApiError(error));
-    } finally {
-        setActionLoading(null);
-    }
-  }, [t, fetchData]);
-
-  // Kết thúc đoạn mã cần bổ sung
-
   useEffect(() => {
     if (!isLoading && params.autoAction && fullState?.initialMessage) {
       if (params.autoAction === 'activate') {
@@ -543,20 +509,7 @@ export default function UcmScreen() {
     return (
         <View style={styles.actionsContainer}>
             {ucmState.status === 'INS' && <>
-                {/* <TouchableOpacity style={[styles.actionButton, styles.actionButtonSuccess]} onPress={() => handleIMAction('activate')}><Text style={styles.actionButtonText}>{t('ucm_page.im_section.btn_activate')}</Text></TouchableOpacity> */}
-
-                <TouchableOpacity 
-                    style={[styles.actionButton, styles.actionButtonSuccess]} 
-                    onPress={() => {
-                        if (initialMessage?.schedule?.clc_type === 'specific_date_in_year') {
-                            handleReactivateUnloopedIM(initialMessage);
-                        } else {
-                            handleIMAction('activate');
-                        }
-                    }}>
-                    <Text style={styles.actionButtonText}>{t('ucm_page.im_section.btn_activate')}</Text>
-                </TouchableOpacity>
-
+                <TouchableOpacity style={[styles.actionButton, styles.actionButtonSuccess]} onPress={() => handleIMAction('activate')}><Text style={styles.actionButtonText}>{t('ucm_page.im_section.btn_activate')}</Text></TouchableOpacity>
                 <TouchableOpacity style={[styles.actionButton, styles.actionButtonDanger]} onPress={() => handleIMAction('delete')}><Text style={styles.actionButtonText}>{t('ucm_page.im_section.btn_delete')}</Text></TouchableOpacity>
             </>}
             {(ucmState.status === 'ANS_CLC' || ucmState.status === 'ANS_WCT') && <>
@@ -721,8 +674,6 @@ export default function UcmScreen() {
         </TouchableOpacity>
     </View>
   );
-
-    // if (isLoading) return <View style={[styles.container, styles.centered]}><ActivityIndicator size="large" color={themeColors.tint} /></View>;
 
     return (
         <SafeAreaView style={styles.container}>
