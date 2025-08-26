@@ -1,8 +1,11 @@
 // src/components/SafeDateTimePicker.tsx
+// version 1.1.0
 
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import React from 'react';
-import { Platform } from 'react-native';
+import { Button, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Colors } from '../constants/Colors';
+import { useTheme } from '../store/ThemeContext';
 
 interface SafeDateTimePickerProps {
   isVisible: boolean;
@@ -21,7 +24,9 @@ export default function SafeDateTimePicker({
   onClose,
   onSelect,
 }: SafeDateTimePickerProps) {
-  
+  const { theme } = useTheme();
+  const themeColors = Colors[theme];
+
   const onChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
     if (Platform.OS === 'android') {
       onClose();
@@ -41,6 +46,35 @@ export default function SafeDateTimePicker({
     return null;
   }
 
+  // --- NEW LOGIC FOR iOS ---
+  if (Platform.OS === 'ios' && mode === 'date') {
+    const styles = createStyles(themeColors);
+    return (
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isVisible}
+        onRequestClose={onClose}
+      >
+        <TouchableOpacity style={styles.modalOverlay} onPress={onClose}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select a Date</Text>
+            <DateTimePicker
+              value={value}
+              mode="date"
+              display="inline" // <-- The key change
+              onChange={onChange}
+              timeZoneName={timeZoneName}
+              textColor={themeColors.text} // Ensure text is visible in dark/light mode
+            />
+            <Button title="Done" onPress={onClose} color={themeColors.tint} />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    );
+  }
+  // --- END NEW LOGIC ---
+
   return (
     <DateTimePicker
       value={value}
@@ -51,3 +85,29 @@ export default function SafeDateTimePicker({
     />
   );
 }
+
+const createStyles = (themeColors: any) => StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: themeColors.card,
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: themeColors.text,
+  },
+});
