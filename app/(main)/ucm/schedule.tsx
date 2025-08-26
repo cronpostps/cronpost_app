@@ -402,7 +402,7 @@ export default function UcmScheduleScreen() {
                 await api.post(endpoint, payload);
             }
             
-            Toast.show({ type: 'success', text2: t('prompts.ucm_save_success')});
+            Toast.show({ type: 'success', text2: t('ucm_page.prompts.ucm_save_success')});
             // router.navigate({ pathname: '/(main)/ucm' });
             router.dismissAll();
 
