@@ -2,7 +2,7 @@
 // version 1.1.0
 
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import React from 'react';
+import React, { useState } from 'react';
 import { Button, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/Colors';
 import { useTheme } from '../store/ThemeContext';
@@ -25,21 +25,21 @@ export default function SafeDateTimePicker({
   onSelect,
 }: SafeDateTimePickerProps) {
   const { theme } = useTheme();
+  const [internalDate, setInternalDate] = useState(value);
   const themeColors = Colors[theme];
 
   const onChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
-      onClose();
-    }
-    if (event.type === 'set' && selectedDate) {
-      const timestamp = event.nativeEvent?.timestamp;
-
-      if (timestamp) {
-        onSelect(new Date(timestamp));
-      } else {
-        onSelect(selectedDate);
+      const currentDate = selectedDate || internalDate;
+      setInternalDate(currentDate);
+      if (Platform.OS === 'android' && event.type === 'set') {
+          onSelect(currentDate);
+          onClose();
       }
-    }
+  };
+
+  const handleConfirm = () => {
+    onSelect(internalDate);
+    onClose();
   };
 
   if (!isVisible) {
@@ -60,14 +60,14 @@ export default function SafeDateTimePicker({
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Select a Date</Text>
             <DateTimePicker
-              value={value}
+              value={internalDate} 
               mode="date"
-              display="inline" // <-- The key change
+              display="inline"
               onChange={onChange}
               timeZoneName={timeZoneName}
-              textColor={themeColors.text} // Ensure text is visible in dark/light mode
+              textColor={themeColors.text}
             />
-            <Button title="Done" onPress={onClose} color={themeColors.tint} />
+            <Button title="Done" onPress={handleConfirm} color={themeColors.tint} />
           </View>
         </TouchableOpacity>
       </Modal>
