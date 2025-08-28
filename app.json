@@ -80,8 +80,14 @@
           "iCloudContainerEnvironment": "Production"
         }
       ],
-      "@react-native-firebase/app",
+      [
+        "@react-native-firebase/app",
+          {
+            "crashlytics_debug_enabled": true
+          }
+      ],
       "@react-native-firebase/messaging",
+      "@react-native-firebase/crashlytics",
       [
         "expo-build-properties",
         {

@@ -1,7 +1,8 @@
 // app/_layout.tsx
-// Version: 2.1.1
+// Version: 2.1.2
 
 import { Ionicons } from '@expo/vector-icons';
+import crashlytics from '@react-native-firebase/crashlytics';
 import messaging from '@react-native-firebase/messaging';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -44,6 +45,16 @@ function RootLayoutNav() {
       SplashScreen.hideAsync();
     }
   }, [isLoading, isAuthProcessing, fontsLoaded, fontError]);
+  
+  useEffect(() => {
+    async function toggleCrashlytics() {
+      if (!__DEV__) {
+        await crashlytics().setCrashlyticsCollectionEnabled(true);
+        console.log('[Crashlytics] Collection has been enabled for DEV testing.');
+      }
+    }
+    toggleCrashlytics();
+  }, []);
   
   useEffect(() => {
     if (!router) return;

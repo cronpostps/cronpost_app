@@ -244,7 +244,7 @@ export default function DashboardScreen() {
             <Text style={styles.actionButtonText}>{buttonText}</Text>
           }
         </TouchableOpacity>
-        <Countdown target={countdownTarget} label={countdownLabel} styles={styles} />
+        <Countdown target={countdownTarget} label={countdownLabel} styles={styles} />   
       </View>
     );
   };
