@@ -1,16 +1,16 @@
 // app/(main)/settings/pricing.tsx
-// Version: 3.3.0 (Added robust data validation before render)
+// Version: 3.4.1
 
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Purchases, { PurchasesOffering } from 'react-native-purchases';
 import apiClient from '../../../src/api/api';
+import { revenueCatConfig } from '../../../src/config/revenueCatConfig';
 import { Colors, Theme } from '../../../src/constants/Colors';
 import i18n from '../../../src/locales/i18n';
 import { useAuth } from '../../../src/store/AuthContext';
 import { useTheme } from '../../../src/store/ThemeContext';
 
-
-// --- Interfaces for Type Safety ---
 interface PricingTierDetails {
     active_messages: number;
     stored_messages: number;
@@ -30,7 +30,6 @@ interface PublicPricingData {
     premium: PricingTierDetails;
 }
 
-// --- Helper for formatting values ---
 const formatValue = (value?: number | boolean | string, type: 'number' | 'storage' | 'email_size' | 'attachments' | 'text' = 'text') => {
     if (value === null || typeof value === 'undefined') return '-';
     switch (type) {
@@ -47,7 +46,6 @@ const formatValue = (value?: number | boolean | string, type: 'number' | 'storag
     }
 };
 
-// --- Reusable Components for the table ---
 const PricingGroupHeader = ({ titleKey }: { titleKey: string }) => {
     const { theme } = useTheme();
     const styles = makeStyles(Colors[theme]);
@@ -66,57 +64,76 @@ const PricingRow = ({ labelKey, freeValue, premiumValue }: { labelKey: string, f
     );
 };
 
-// --- Main Pricing Screen Component ---
 const PricingScreen = () => {
     const { theme } = useTheme();
-    const { authState } = useAuth();
+    const { user, isPremium, isRevenueCatReady } = useAuth();
     const themeColors = Colors[theme];
     const styles = makeStyles(themeColors);
 
     const [loading, setLoading] = useState(true);
     const [pricingData, setPricingData] = useState<PublicPricingData | null>(null);
-    const [userMembership, setUserMembership] = useState<'free' | 'premium' | 'guest'>('guest');
     
-    const fetchUserData = useCallback(async () => {
-        if (authState?.token) {
-            try {
-                const { data } = await apiClient.get('api/users/me');
-                setUserMembership(data.membership_type || 'free');
-            } catch (error) {
-                console.error("Failed to fetch user membership status:", error);
-                setUserMembership('free');
-            }
-        } else {
-            setUserMembership('guest');
-        }
-    }, [authState?.token]);
-    
+    const [offering, setOffering] = useState<PurchasesOffering | null>(null);
+    const [isPurchasing, setIsPurchasing] = useState(false);
+
     useEffect(() => {
-        const loadData = async () => {
+        const fetchOfferings = async () => {
+            setLoading(true);
             try {
-                setLoading(true);
-                const pricingPromise = apiClient.get('api/users/public/pricing-details');
-                const userPromise = fetchUserData();
-                
-                const [pricingResponse] = await Promise.all([pricingPromise, userPromise]);
-                
-                setPricingData(pricingResponse.data);
-            } catch (error) {
-                console.error("Failed to load pricing data", error);
+                const offerings = await Purchases.getOfferings();
+                if (offerings.current !== null && offerings.current.availablePackages.length !== 0) {
+                    setOffering(offerings.current);
+                }
+            } catch (e) {
+                console.error("Error fetching offerings: ", e);
+                Alert.alert("Error", "Could not fetch available products.");
             } finally {
                 setLoading(false);
             }
         };
-        loadData();
-    }, [fetchUserData]);
 
-    const handleUpgrade = () => {
-        if (userMembership === 'guest') {
-            // TODO: Navigate to Login/Signup Screen
+        const fetchStaticPricing = async () => {
+            try {
+                const pricingResponse = await apiClient.get('api/users/public/pricing-details');
+                setPricingData(pricingResponse.data);
+            } catch (error) {
+                console.error("Failed to load static pricing data", error);
+            }
+        };
+
+        if (isRevenueCatReady) {
+            fetchOfferings();
+        }
+        fetchStaticPricing();
+    }, [isRevenueCatReady]);
+
+    const handleUpgrade = async () => {
+        if (!user) {
             console.log("User is a guest, navigate to auth flow");
-        } else {
-            // TODO: Initiate In-App Purchase flow with RevenueCat
-            console.log("User is free, initiating RevenueCat purchase flow");
+            Alert.alert("Login Required", "Please sign in or create an account to upgrade.");
+            return;
+        }
+
+        if (!offering?.availablePackages[0]) {
+            console.error("No products available for purchase.");
+            Alert.alert("Error", "No products available for purchase at this moment.");
+            return;
+        }
+
+        setIsPurchasing(true);
+        try {
+            const packageToPurchase = offering.availablePackages[0];
+            const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
+            if (typeof customerInfo.entitlements.active[revenueCatConfig.entitlementId] !== 'undefined') {
+                Alert.alert("Success!", "You are now a Premium user.");
+            }
+        } catch (e: any) {
+            if (!e.userCancelled) {
+                console.error("Purchase error:", e);
+                Alert.alert("Error", "An error occurred during the purchase. Please try again.");
+            }
+        } finally {
+            setIsPurchasing(false);
         }
     };
 
@@ -124,7 +141,6 @@ const PricingScreen = () => {
         return <SafeAreaView style={styles.container}><ActivityIndicator size="large" color={themeColors.primary} /></SafeAreaView>;
     }
 
-    // Sửa lỗi: Thêm điều kiện kiểm tra `free` và `premium` để đảm bảo dữ liệu đầy đủ
     if (!pricingData || !pricingData.free || !pricingData.premium) {
         return <SafeAreaView style={styles.container}><Text style={styles.text}>{i18n.t('errors.page_load_failed')}</Text></SafeAreaView>;
     }
@@ -149,9 +165,9 @@ const PricingScreen = () => {
                         labelKey="pricing_page.feature_price"
                         freeValue={i18n.t('pricing_page.price_free')}
                         premiumValue={
-                            typeof pricingData.premium_price_usd === 'number'
-                                ? `$${pricingData.premium_price_usd.toFixed(2)} / ${i18n.t('pricing_page.price_lifetime')}`
-                                : '...'
+                            offering?.availablePackages[0]?.product.priceString
+                            ? `${offering.availablePackages[0].product.priceString} / ${i18n.t('pricing_page.price_lifetime')}`
+                            : '...'
                         }
                     />
                     <PricingRow labelKey="pricing_page.feature_checkin" freeValue={i18n.t('pricing_page.checkin_free')} premiumValue={i18n.t('pricing_page.checkin_premium')} />
@@ -173,11 +189,18 @@ const PricingScreen = () => {
                 </View>
 
                 <View style={styles.buttonContainer}>
-                    {userMembership === 'premium' ? (
+                    {isPremium ? (
                         <Text style={styles.premiumText}>{i18n.t('pricing_page.btn_already_premium')}</Text>
                     ) : (
-                        <Pressable style={styles.upgradeButton} onPress={handleUpgrade}>
-                            <Text style={styles.upgradeButtonText}>{i18n.t('pricing_page.btn_upgrade')}</Text>
+                        <Pressable 
+                            style={[styles.upgradeButton, isPurchasing && styles.disabledButton]} 
+                            onPress={handleUpgrade}
+                            disabled={isPurchasing}
+                        >
+                            {isPurchasing 
+                                ? <ActivityIndicator color="#fff" />
+                                : <Text style={styles.upgradeButtonText}>{i18n.t('pricing_page.btn_upgrade')}</Text>
+                            }
                         </Pressable>
                     )}
                 </View>
@@ -186,7 +209,6 @@ const PricingScreen = () => {
     );
 };
 
-// --- Stylesheet ---
 const makeStyles = (themeColors: Theme) => StyleSheet.create({
     container: {
         flex: 1,
@@ -267,6 +289,9 @@ const makeStyles = (themeColors: Theme) => StyleSheet.create({
         paddingVertical: 15,
         borderRadius: 8,
         alignItems: 'center',
+    },
+    disabledButton: {
+        backgroundColor: '#a5d6a7',
     },
     upgradeButtonText: {
         color: '#fff',

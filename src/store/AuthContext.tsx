@@ -1,5 +1,5 @@
 // src/store/AuthContext.tsx
-// Version: 2.1.2
+// Version: 2.2.5
 
 import * as Google from 'expo-auth-session/providers/google';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -16,6 +16,9 @@ import { registerForPushNotificationsAsync } from '../services/notificationServi
 import { translateApiError } from '../utils/errorTranslator';
 import { useTheme } from './ThemeContext';
 import { useIamStore } from './iamStore';
+
+import Purchases, { CustomerInfo } from 'react-native-purchases';
+import { revenueCatConfig } from '../config/revenueCatConfig';
 
 interface User {
   id: string;
@@ -129,6 +132,8 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
       isAuthenticated: null,
     });
     const [user, setUser] = useState<User | null>(null);
+    const [isPremium, setIsPremium] = useState<boolean>(false);
+    const [isRevenueCatReady, setIsRevenueCatReady] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isAuthProcessing, setIsAuthProcessing] = useState(false);
     const [isAppLocked, setIsAppLocked] = useState(true);
@@ -148,8 +153,11 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
     });
 
     const signOut = useCallback(async () => {
-      try { await api.post('/api/auth/signout'); } 
-      catch (e: any) { console.error('Sign out API call failed, proceeding with client-side logout.', e); } 
+      try { 
+        await Purchases.logOut();
+        await api.post('/api/auth/signout');
+      } 
+      catch (e: any) { console.error('Sign out failed, proceeding with client-side logout.', e); } 
       finally {
         await SecureStore.deleteItemAsync(TOKEN_KEY);
         await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
@@ -182,6 +190,11 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
 
         const userResponse = await api.get('/api/users/me');
         const currentUser: User = userResponse.data;
+        await Purchases.logIn(currentUser.id);
+        console.log(`RevenueCat user logged in with ID: ${currentUser.id}`);
+        const customerInfo = await Purchases.getCustomerInfo();
+        const premiumEntitlement = customerInfo.entitlements.active[revenueCatConfig.entitlementId];
+        setIsPremium(typeof premiumEntitlement !== 'undefined');
         setUser(currentUser);
         setAuthState({ accessToken: accessToken, refreshToken: refreshToken, isAuthenticated: true });
         useIamStore.getState().fetchUnreadCount();
@@ -208,6 +221,42 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
             setIsAppLocked(false);
         }
     }, [performAutoCheckinIfNeeded]);
+
+    useEffect(() => {
+      const initializeRevenueCat = async () => {
+        if (__DEV__) {
+          await Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
+        }
+        try {
+          await Purchases.configure({ apiKey: revenueCatConfig.apiKey });
+          setIsRevenueCatReady(true);
+          console.log('RevenueCat SDK configured successfully.');
+        } catch (e) {
+          console.error("Failed to configure RevenueCat:", e);
+          setIsRevenueCatReady(false);
+        }
+      };
+
+      initializeRevenueCat();
+    }, []);
+
+    useEffect(() => {
+      const customerInfoUpdateListener = (customerInfo: CustomerInfo) => { 
+        const premiumEntitlement = customerInfo.entitlements.active[revenueCatConfig.entitlementId];
+        
+        if (typeof premiumEntitlement !== 'undefined') {
+          setIsPremium(true);
+        } else {
+          setIsPremium(false);
+        }
+      };
+
+      Purchases.addCustomerInfoUpdateListener(customerInfoUpdateListener);
+
+      return () => {
+        Purchases.removeCustomerInfoUpdateListener(customerInfoUpdateListener);
+      };
+    }, []);
     
     useEffect(() => {
       const handleGoogleResponse = async () => {
@@ -246,8 +295,10 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
           if (accessToken) {
             console.log("--- Auth: 2. Đã tìm thấy access token ---");
             setAuthState(prev => ({ ...prev, accessToken, isAuthenticated: true }));
-            
             console.log("--- Auth: 3. Đang lấy thông tin người dùng ---");
+            const customerInfo = await Purchases.getCustomerInfo();
+            const premiumEntitlement = customerInfo.entitlements.active[revenueCatConfig.entitlementId];
+            setIsPremium(typeof premiumEntitlement !== 'undefined');
 
         try {
           const userResponse = await api.get('/api/users/me');
@@ -352,7 +403,7 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
         }
     };
   
-    const value = { signIn, signInWithGoogle, signOut, user, isLoading, isAuthenticated: authState.isAuthenticated, isAuthProcessing, refreshUser };
+    const value = { signIn, signInWithGoogle, signOut, user, isLoading, isAuthenticated: authState.isAuthenticated, isAuthProcessing, refreshUser, isPremium, isRevenueCatReady };
     
     const styles = StyleSheet.create({
         lockScreenContainer: {
@@ -370,39 +421,15 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
         }
     });
 
-    // if (isLoading) {
-    //   return <View style={styles.lockScreenContainer}><ActivityIndicator size="large" /></View>;
-    // }
-    
-    // if (authState.isAuthenticated && isAppLocked) {
-    //     return (
-    //         <View style={styles.lockScreenContainer}>
-    //             <PinModal
-    //                 ref={pinModalRef} 
-    //                 isVisible={pinModalVisible}
-    //                 onClose={handlePinClose}
-    //                 onSubmit={handlePinSubmit}
-    //                 promptText={i18n.t('pin_modal.prompt_security_verification')}
-    //             />
-    //             {!pinModalVisible && <ActivityIndicator size="large" />}
-    //         </View>
-    //     );
-    // }
-  
-    // --- BẮT ĐẦU THAY THẾ PHẦN RETURN ---
     return (
       <AuthContext.Provider value={value}>
-        {/* Render nội dung chính của ứng dụng một cách vô điều kiện */}
         {children}
-
-        {/* Render lớp phủ loading nếu isLoading là true */}
-        {isLoading && (
+        {(isLoading || !isRevenueCatReady) && (
           <View style={styles.overlay}>
             <ActivityIndicator size="large" color={themeColors.tint} />
           </View>
         )}
 
-        {/* Render lớp phủ khóa PIN nếu cần */}
         {authState.isAuthenticated && isAppLocked && (
           <View style={styles.overlay}>
             <PinModal
@@ -417,5 +444,4 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
         )}
       </AuthContext.Provider>
     );
-    // --- KẾT THÚC THAY THẾ ---
 };

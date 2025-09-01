@@ -95,8 +95,7 @@
             "useFrameworks": "static"
           }
         }
-      ],
-      "react-native-iap"
+      ]
     ],
     "experiments": {
       "typedRoutes": true
