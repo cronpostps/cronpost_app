@@ -36,7 +36,17 @@
     "deletion_premium": "Asla",
     "btn_get_started": "Başlayın",
     "btn_upgrade": "Şimdi Yükselt",
-    "btn_already_premium": "Zaten Premium"
+    "btn_already_premium": "Zaten Premium",
+    "btn_restore": "Satın Almaları Geri Yükle",
+    "restore_success_title": "Geri Yükleme Başarılı",
+    "restore_success_body": "Premium avantajlarınız geri yüklendi.",
+    "hard_lock_title": "Satın Alma Kullanıldı",
+    "hard_lock_body": "Bu satın alma, başka bir CronPost hesabına kalıcı olarak bağlıdır: {{masked_email}}. Devam etmek için lütfen o hesaba giriş yapın veya web sitemizden yeni bir plan satın alın.",
+    "hard_lock_body_fallback": "Bu satın alma, başka bir CronPost hesabına kalıcı olarak bağlıdır. Devam etmek için lütfen o hesaba giriş yapın veya web sitemizden yeni bir plan satın alın.",
+    "hard_lock_btn_buy_web": "Web Üzerinden Yeni Plan Satın Al",
+    "hard_lock_btn_ok": "Anladım",
+    "upgrade_success_title" : "Yükseltme Başarılı",
+    "upgrade_success_body" : "Artık Premium kullanıcısınız! Tüm güçlü özelliklerin keyfini çıkarın."
   },
   "confirm_upgrade_modal": {
     "signin_required_title": "Giriş Gerekli",
@@ -723,6 +733,8 @@
     "update_success": "Bildirim ayarları başarıyla güncellendi."
   },
   "errors": {
+    "restore_failed": "Satın alma işleminiz geri yüklenemedi. Lütfen daha sonra tekrar deneyin.",
+    "auth_required_for_action": "Bu eylem, oturumunuzun açık olmasını gerektirir. Lütfen tekrar deneyin.",
     "refresh_failed": "Veri yenileme hatası: {{message}}",
     "generic": "Hata: {{message}}",
     "checkin_failed": "Bildirim başarısız: {{message}}",

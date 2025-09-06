@@ -36,7 +36,17 @@
     "deletion_premium": "Niemals",
     "btn_get_started": "Jetzt loslegen",
     "btn_upgrade": "Jetzt upgraden",
-    "btn_already_premium": "Bereits Premium"
+    "btn_already_premium": "Bereits Premium",
+    "btn_restore": "Käufe wiederherstellen",
+    "restore_success_title": "Wiederherstellung erfolgreich",
+    "restore_success_body": "Ihre Premium-Vorteile wurden wiederhergestellt.",
+    "hard_lock_title": "Kauf wurde verwendet",
+    "hard_lock_body": "Dieser Kauf ist permanent mit einem anderen CronPost-Konto verknüpft: {{masked_email}}. Um fortzufahren, melden Sie sich bitte bei diesem Konto an oder kaufen Sie einen neuen Plan auf unserer Website.",
+    "hard_lock_body_fallback": "Dieser Kauf ist permanent mit einem anderen CronPost-Konto verknüpft. Um fortzufahren, melden Sie sich bitte bei diesem Konto an oder kaufen Sie einen neuen Plan auf unserer Website.",
+    "hard_lock_btn_buy_web": "Neuen Plan über die Website kaufen",
+    "hard_lock_btn_ok": "Verstanden",
+    "upgrade_success_title" : "Upgrade erfolgreich",
+    "upgrade_success_body" : "Sie sind jetzt ein Premium-Nutzer! Genießen Sie alle leistungsstarken Funktionen."
   },
   "confirm_upgrade_modal": {
     "signin_required_title": "Anmeldung erforderlich",
@@ -723,6 +733,8 @@
     "update_success": "Benachrichtigungseinstellungen erfolgreich aktualisiert."
   },
   "errors": {
+    "restore_failed": "Konnte Ihren Kauf nicht wiederherstellen. Bitte versuchen Sie es später erneut.",
+    "auth_required_for_action": "Diese Aktion erfordert, dass Sie angemeldet sind. Bitte versuchen Sie es erneut.",
     "refresh_failed": "Fehler beim Aktualisieren der Daten: {{message}}",
     "generic": "Fehler: {{message}}",
     "checkin_failed": "Check-in fehlgeschlagen: {{message}}",

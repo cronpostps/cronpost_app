@@ -36,7 +36,17 @@
     "deletion_premium": "ไม่มี",
     "btn_get_started": "เริ่มต้นใช้งาน",
     "btn_upgrade": "อัปเกรดทันที",
-    "btn_already_premium": "เป็นพรีเมียมแล้ว"
+    "btn_already_premium": "เป็นพรีเมียมแล้ว",
+    "btn_restore": "กู้คืนการซื้อ",
+    "restore_success_title": "กู้คืนสำเร็จ",
+    "restore_success_body": "สิทธิ์ Premium ของคุณได้รับการกู้คืนแล้ว",
+    "hard_lock_title": "การซื้อถูกใช้งานแล้ว",
+    "hard_lock_body": "การซื้อนี้เชื่อมโยงอย่างถาวรกับบัญชี CronPost อื่น: {{masked_email}} เพื่อดำเนินการต่อ โปรดเข้าสู่ระบบบัญชีนั้นหรือซื้อแผนใหม่ผ่านทางเว็บไซต์ของเรา",
+    "hard_lock_body_fallback": "การซื้อนี้เชื่อมโยงอย่างถาวรกับบัญชี CronPost อื่น เพื่อดำเนินการต่อ โปรดเข้าสู่ระบบบัญชีนั้นหรือซื้อแผนใหม่ผ่านทางเว็บไซต์ของเรา",
+    "hard_lock_btn_buy_web": "ซื้อแผนใหม่ผ่านเว็บ",
+    "hard_lock_btn_ok": "รับทราบ",
+    "upgrade_success_title" : "อัปเกรดสำเร็จ",
+    "upgrade_success_body" : "คุณเป็นผู้ใช้พรีเมียมแล้ว! เพลิดเพลินกับฟีเจอร์ทรงพลังทั้งหมด"
   },
   "confirm_upgrade_modal": {
     "signin_required_title": "จำเป็นต้องเข้าสู่ระบบ",
@@ -723,6 +733,8 @@
     "update_success": "อัปเดตการตั้งค่าการแจ้งเตือนสำเร็จแล้ว"
   },
   "errors": {
+    "restore_failed": "ไม่สามารถกู้คืนการซื้อของคุณได้ โปรดลองอีกครั้งในภายหลัง",
+    "auth_required_for_action": "การดำเนินการนี้ต้องเข้าสู่ระบบ โปรดลองอีกครั้ง",
     "refresh_failed": "ข้อผิดพลาดในการรีเฟรชข้อมูล: {{message}}",
     "generic": "ข้อผิดพลาด: {{message}}",
     "checkin_failed": "เช็คอินล้มเหลว: {{message}}",

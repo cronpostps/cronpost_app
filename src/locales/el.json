@@ -36,7 +36,17 @@
     "deletion_premium": "Ποτέ",
     "btn_get_started": "Ξεκινήστε",
     "btn_upgrade": "Αναβαθμίστε Τώρα",
-    "btn_already_premium": "Είστε ήδη Premium"
+    "btn_already_premium": "Είστε ήδη Premium",
+    "btn_restore": "Επαναφορά Αγορών",
+    "restore_success_title": "Επιτυχής Επαναφορά",
+    "restore_success_body": "Τα προνόμια Premium σας έχουν επαναφερθεί.",
+    "hard_lock_title": "Η Αγορά Χρησιμοποιείται",
+    "hard_lock_body": "Αυτή η αγορά είναι μόνιμα συνδεδεμένη με έναν άλλο λογαριασμό CronPost: {{masked_email}}. Για να συνεχίσετε, παρακαλούμε συνδεθείτε σε αυτόν τον λογαριασμό ή αγοράστε ένα νέο πρόγραμμα μέσω της ιστοσελίδας μας.",
+    "hard_lock_body_fallback": "Αυτή η αγορά είναι μόνιμα συνδεδεμένη με έναν άλλο λογαριασμό CronPost. Για να συνεχίσετε, παρακαλούμε συνδεθείτε σε αυτόν τον λογαριασμό ή αγοράστε ένα νέο πρόγραμμα μέσω της ιστοσελίδας μας.",
+    "hard_lock_btn_buy_web": "Αγορά Νέου Προγράμματος μέσω Ιστού",
+    "hard_lock_btn_ok": "Το Κατάλαβα",
+    "upgrade_success_title" : "Επιτυχής Αναβάθμιση",
+    "upgrade_success_body" : "Το CronPost Premium είναι πλέον ενεργό! Απολαύστε όλες τις ισχυρές δυνατότητες."
   },
   "confirm_upgrade_modal": {
     "signin_required_title": "Απαιτείται Σύνδεση",
@@ -723,6 +733,8 @@
     "update_success": "Οι ρυθμίσεις ειδοποιήσεων ενημερώθηκαν επιτυχώς."
   },
   "errors": {
+    "restore_failed": "Δεν ήταν δυνατή η επαναφορά της αγοράς σας. Παρακαλούμε δοκιμάστε ξανά αργότερα.",
+    "auth_required_for_action": "Αυτή η ενέργεια απαιτεί να είστε συνδεδεμένος. Παρακαλούμε δοκιμάστε ξανά.",
     "refresh_failed": "Σφάλμα ανανέωσης δεδομένων: {{message}}",
     "generic": "Σφάλμα: {{message}}",
     "checkin_failed": "Το check-in απέτυχε: {{message}}",

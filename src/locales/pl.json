@@ -36,7 +36,17 @@
     "deletion_premium": "Nigdy",
     "btn_get_started": "Zacznij",
     "btn_upgrade": "Ulepsz teraz",
-    "btn_already_premium": "Już jesteś Premium"
+    "btn_already_premium": "Już jesteś Premium",
+    "btn_restore": "Przywróć Zakupy",
+    "restore_success_title": "Przywrócono pomyślnie",
+    "restore_success_body": "Twoje korzyści Premium zostały przywrócone.",
+    "hard_lock_title": "Zakup został wykorzystany",
+    "hard_lock_body": "Ten zakup jest trwale powiązany z innym kontem CronPost: {{masked_email}}. Aby kontynuować, zaloguj się na to konto lub kup nowy plan na naszej stronie internetowej.",
+    "hard_lock_body_fallback": "Ten zakup jest trwale powiązany z innym kontem CronPost. Aby kontynuować, zaloguj się na to konto lub kup nowy plan na naszej stronie internetowej.",
+    "hard_lock_btn_buy_web": "Kup nowy plan przez stronę internetową",
+    "hard_lock_btn_ok": "Rozumiem",
+    "upgrade_success_title" : "Ulepszenie zakończone sukcesem",
+    "upgrade_success_body" : "Jesteś teraz użytkownikiem Premium! Ciesz się wszystkimi potężnymi funkcjami."
   },
   "confirm_upgrade_modal": {
     "signin_required_title": "Wymagane logowanie",
@@ -723,6 +733,8 @@
     "update_success": "Ustawienia powiadomień pomyślnie zaktualizowane."
   },
   "errors": {
+    "restore_failed": "Nie udało się przywrócić zakupu. Spróbuj ponownie później.",
+    "auth_required_for_action": "Ta akcja wymaga zalogowania. Spróbuj ponownie.",
     "refresh_failed": "Błąd odświeżania danych: {{message}}",
     "generic": "Błąd: {{message}}",
     "checkin_failed": "Odprawa nie powiodła się: {{message}}",

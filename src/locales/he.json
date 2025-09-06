@@ -36,7 +36,17 @@
     "deletion_premium": "אף פעם",
     "btn_get_started": "התחילו עכשיו",
     "btn_upgrade": "שדרגו עכשיו",
-    "btn_already_premium": "כבר פרימיום"
+    "btn_already_premium": "כבר פרימיום",
+    "btn_restore": "שחזור רכישות",
+    "restore_success_title": "השחזור הצליח",
+    "restore_success_body": "הטבות הפרימיום שלך שוחזרו בהצלחה.",
+    "hard_lock_title": "רכישה בשימוש",
+    "hard_lock_body": "רכישה זו מקושרת לצמיתות לחשבון CronPost אחר: {{masked_email}}. כדי להמשיך, אנא היכנס לחשבון זה או רכוש תוכנית חדשה דרך האתר שלנו.",
+    "hard_lock_body_fallback": "רכישה זו מקושרת לצמיתות לחשבון CronPost אחר. כדי להמשיך, אנא היכנס לחשבון זה או רכוש תוכנית חדשה דרך האתר שלנו.",
+    "hard_lock_btn_buy_web": "רכישת תוכנית חדשה דרך האתר",
+    "hard_lock_btn_ok": "הבנתי",
+    "upgrade_success_title" : "ההדרגה הצליחה",
+    "upgrade_success_body" : "אתה עכשיו משתמש פרימיום! תהנה מכל התכונות העוצמתיות."
   },
   "confirm_upgrade_modal": {
     "signin_required_title": "נדרשת התחברות",
@@ -705,6 +715,8 @@
     "update_success": "הגדרות ההתראות עודכנו בהצלחה."
   },
   "errors": {
+    "restore_failed": "לא ניתן היה לשחזר את הרכישה שלך. אנא נסה/י שוב מאוחר יותר.",
+    "auth_required_for_action": "פעולה זו דורשת שתיכנס למערכת. אנא נסה/י שוב.",
     "refresh_failed": "שגיאה ברענון נתונים: {{message}}",
     "generic": "שגיאה: {{message}}",
     "checkin_failed": "הצ'ק-אין נכשל: {{message}}",

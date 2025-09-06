@@ -36,7 +36,17 @@
     "deletion_premium": "Никогда",
     "btn_get_started": "Начать",
     "btn_upgrade": "Обновить сейчас",
-    "btn_already_premium": "Уже Премиум"
+    "btn_already_premium": "Уже Премиум",
+    "btn_restore": "Восстановить покупки",
+    "restore_success_title": "Восстановление успешно",
+    "restore_success_body": "Ваши Premium-привилегии были восстановлены.",
+    "hard_lock_title": "Покупка использована",
+    "hard_lock_body": "Эта покупка навсегда привязана к другому аккаунту CronPost: {{masked_email}}. Чтобы продолжить, войдите в этот аккаунт или купите новый план на нашем веб-сайте.",
+    "hard_lock_body_fallback": "Эта покупка навсегда привязана к другому аккаунту CronPost. Чтобы продолжить, войдите в этот аккаунт или купите новый план на нашем веб-сайте.",
+    "hard_lock_btn_buy_web": "Купить новый план на сайте",
+    "hard_lock_btn_ok": "Понятно",
+    "upgrade_success_title" : "Обновление успешно",
+    "upgrade_success_body" : "Теперь вы пользователь Premium! Наслаждайтесь всеми мощными функциями."
   },
   "confirm_upgrade_modal": {
     "signin_required_title": "Требуется вход",
@@ -723,6 +733,8 @@
     "update_success": "Настройки уведомлений успешно обновлены."
   },
   "errors": {
+    "restore_failed": "Не удалось восстановить вашу покупку. Пожалуйста, попробуйте позже.",
+    "auth_required_for_action": "Это действие требует входа в систему. Пожалуйста, попробуйте снова.",
     "refresh_failed": "Ошибка обновления данных: {{message}}",
     "generic": "Ошибка: {{message}}",
     "checkin_failed": "Регистрация не удалась: {{message}}",

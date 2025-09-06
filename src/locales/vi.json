@@ -36,7 +36,17 @@
     "deletion_premium": "Không bao giờ",
     "btn_get_started": "Bắt đầu",
     "btn_upgrade": "Nâng cấp ngay",
-    "btn_already_premium": "Đã là Premium"
+    "btn_already_premium": "Đã là Premium",
+    "btn_restore": "Khôi phục Giao dịch đã mua",
+    "restore_success_title": "Khôi phục Thành công",
+    "restore_success_body": "Quyền lợi Premium của bạn đã được khôi phục.",
+    "hard_lock_title": "Giao dịch đã được sử dụng",
+    "hard_lock_body": "Giao dịch này đã được liên kết vĩnh viễn với tài khoản CronPost: {{masked_email}}. Để tiếp tục, vui lòng đăng nhập vào tài khoản đó hoặc mua một gói mới qua trang web của chúng tôi.",
+    "hard_lock_body_fallback": "Giao dịch này đã được liên kết vĩnh viễn với một tài khoản CronPost khác. Để tiếp tục, vui lòng đăng nhập vào tài khoản đó hoặc mua một gói mới qua trang web của chúng tôi.",
+    "hard_lock_btn_buy_web": "Mua gói mới qua Web",
+    "hard_lock_btn_ok": "Đã hiểu",
+    "upgrade_success_title" : "Nâng cấp Thành công",
+    "upgrade_success_body" : "Bạn hiện là người dùng Premium! Hãy tận hưởng tất cả các tính năng mạnh mẽ."
   },
   "confirm_upgrade_modal": {
     "signin_required_title": "Yêu cầu Đăng nhập",
@@ -723,6 +733,8 @@
     "update_success": "Cài đặt thông báo đã được cập nhật thành công."
   },
   "errors": {
+    "restore_failed": "Không thể khôi phục giao dịch. Vui lòng thử lại sau.",
+    "auth_required_for_action": "Hành động này yêu cầu bạn phải đăng nhập. Vui lòng thử lại.",
     "refresh_failed": "Lỗi làm mới dữ liệu: {{message}}",
     "generic": "Lỗi: {{message}}",
     "checkin_failed": "Check-in thất bại: {{message}}",

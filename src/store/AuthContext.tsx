@@ -1,5 +1,5 @@
 // src/store/AuthContext.tsx
-// Version: 2.2.5
+// Version: 2.2.9
 
 import * as Google from 'expo-auth-session/providers/google';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -190,8 +190,15 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
 
         const userResponse = await api.get('/api/users/me');
         const currentUser: User = userResponse.data;
-        await Purchases.logIn(currentUser.id);
-        console.log(`RevenueCat user logged in with ID: ${currentUser.id}`);
+
+        try {
+            console.log(`[RevenueCat Debug] Attempting to log in user with ID: ${currentUser.id}`);
+            await Purchases.logIn(currentUser.id);
+            console.log(`[RevenueCat Debug] Successfully logged in user: ${currentUser.id}`);
+        } catch (e: any) {
+            console.error(`[RevenueCat Debug] ERROR logging in user: ${currentUser.id}`, e);
+        }
+
         const customerInfo = await Purchases.getCustomerInfo();
         const premiumEntitlement = customerInfo.entitlements.active[revenueCatConfig.entitlementId];
         setIsPremium(typeof premiumEntitlement !== 'undefined');
@@ -304,11 +311,26 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
           const userResponse = await api.get('/api/users/me');
           const currentUser: User = userResponse.data;
           setUser(currentUser);
+
+          try {
+              console.log(`[RevenueCat Debug] (onAppLoad) Attempting to log in user with ID: ${currentUser.id}`);
+              await Purchases.logIn(currentUser.id);
+              console.log(`[RevenueCat Debug] (onAppLoad) Successfully logged in user: ${currentUser.id}`);
+          } catch (e: any) {
+              console.error(`[RevenueCat Debug] (onAppLoad) ERROR logging in user: ${currentUser.id}`, e);
+          }
+
           console.log("--- Auth: 4. Lấy thông tin người dùng thành công. Trạng thái tài khoản:", currentUser.account_status);
+          
+          const customerInfo = await Purchases.getCustomerInfo();
+          const premiumEntitlement = customerInfo.entitlements.active[revenueCatConfig.entitlementId];
+          setIsPremium(typeof premiumEntitlement !== 'undefined');
+
           useIamStore.getState().fetchUnreadCount();
           await performAutoCheckinIfNeeded(currentUser);
           const biometricsKey = `biometrics_enabled_for_${currentUser.id}`;
           const isBiometricsEnabled = await SecureStore.getItemAsync(biometricsKey);
+
           if (currentUser.has_pin) {
             console.log("--- Auth: 5. Người dùng có mã PIN. Chuẩn bị khóa ứng dụng ---");
             setIsAppLocked(true);

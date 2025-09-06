@@ -36,7 +36,17 @@
     "deletion_premium": "Never",
     "btn_get_started": "Get Started",
     "btn_upgrade": "Upgrade Now",
-    "btn_already_premium": "Already Premium"
+    "btn_already_premium": "Already Premium",
+    "btn_restore": "Restore Purchases",
+    "restore_success_title": "Restore Successful",
+    "restore_success_body": "Your Premium benefits have been restored.",
+    "hard_lock_title": "Purchase Used",
+    "hard_lock_body": "This purchase is permanently linked to another CronPost account: {{masked_email}}. To continue, please sign in to that account or purchase a new plan on our website.",
+    "hard_lock_body_fallback": "This purchase is permanently linked to another CronPost account. To continue, please sign in to that account or purchase a new plan on our website.",
+    "hard_lock_btn_buy_web": "Purchase New Plan via Web",
+    "hard_lock_btn_ok": "Got it",
+    "upgrade_success_title" : "Upgrade Successful",
+    "upgrade_success_body" : "You are now a Premium user! Enjoy all the powerful features."
   },
   "confirm_upgrade_modal": {
     "signin_required_title": "Login Required",
@@ -705,6 +715,8 @@
     "update_success": "Notification settings updated successfully."
   },
   "errors":{
+    "restore_failed": "Could not restore your purchase. Please try again later.",
+    "auth_required_for_action": "This action requires you to be logged in. Please try again.",
     "refresh_failed": "Error refreshing data: {{message}}",
     "generic": "Error: {{message}}",
     "checkin_failed": "Check-in failed: {{message}}",

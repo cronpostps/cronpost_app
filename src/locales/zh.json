@@ -36,7 +36,17 @@
     "deletion_premium": "从不",
     "btn_get_started": "开始使用",
     "btn_upgrade": "立即升级",
-    "btn_already_premium": "已是高级版"
+    "btn_already_premium": "已是高级版",
+    "btn_restore": "恢复购买",
+    "restore_success_title": "恢复成功",
+    "restore_success_body": "您的高级特权已恢复。",
+    "hard_lock_title": "购买已使用",
+    "hard_lock_body": "此购买已永久关联到另一个CronPost账户：{{masked_email}}。若要继续，请登录该账户或在我们的网站上购买新套餐。",
+    "hard_lock_body_fallback": "此购买已永久关联到另一个CronPost账户。若要继续，请登录该账户或在我们的网站上购买新套餐。",
+    "hard_lock_btn_buy_web": "通过网页购买新套餐",
+    "hard_lock_btn_ok": "知道了",
+    "upgrade_success_title" : "升级成功",
+    "upgrade_success_body" : "您现在是高级用户！享受所有强大功能。"
   },
   "confirm_upgrade_modal": {
     "signin_required_title": "需要登录",
@@ -723,6 +733,8 @@
     "update_success": "通知设置更新成功。"
   },
   "errors": {
+    "restore_failed": "无法恢复您的购买。请稍后重试。",
+    "auth_required_for_action": "此操作需要您登录。请重试。",
     "refresh_failed": "刷新数据失败：{{message}}",
     "generic": "错误：{{message}}",
     "checkin_failed": "签到失败：{{message}}",

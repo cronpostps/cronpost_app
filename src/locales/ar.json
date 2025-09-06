@@ -36,7 +36,17 @@
     "deletion_premium": "أبدًا",
     "btn_get_started": "ابدأ الآن",
     "btn_upgrade": "الترقية الآن",
-    "btn_already_premium": "بريميوم بالفعل"
+    "btn_already_premium": "بريميوم بالفعل",
+    "btn_restore": "استعادة المشتريات",
+    "restore_success_title": "تمت الاستعادة بنجاح",
+    "restore_success_body": "تمت استعادة مزايا Premium الخاصة بك.",
+    "hard_lock_title": "الاشتراك قيد الاستخدام",
+    "hard_lock_body": "هذه المشتريات مرتبطة بشكل دائم بحساب CronPost آخر: {{masked_email}}. للمتابعة، يُرجى تسجيل الدخول إلى ذلك الحساب أو شراء خطة جديدة عبر موقعنا الإلكتروني.",
+    "hard_lock_body_fallback": "هذه المشتريات مرتبطة بشكل دائم بحساب CronPost آخر. للمتابعة، يُرجى تسجيل الدخول إلى ذلك الحساب أو شراء خطة جديدة عبر موقعنا الإلكتروني.",
+    "hard_lock_btn_buy_web": "شراء خطة جديدة عبر الويب",
+    "hard_lock_btn_ok": "حسناً",
+    "upgrade_success_title" : "تمت الترقية بنجاح",
+    "upgrade_success_body" : "أنت الآن مستخدم بريميوم! استمتع بجميع الميزات القوية."
   },
   "confirm_upgrade_modal": {
     "signin_required_title": "تسجيل الدخول مطلوب",
@@ -723,6 +733,8 @@
     "update_success": "تم تحديث إعدادات الإشعارات بنجاح."
   },
   "errors": {
+    "restore_failed": "تعذر استعادة مشترياتك. يرجى المحاولة مرة أخرى لاحقًا.",
+    "auth_required_for_action": "يتطلب هذا الإجراء تسجيل دخولك. يرجى المحاولة مرة أخرى.",
     "refresh_failed": "خطأ في تحديث البيانات: {{message}}",
     "generic": "خطأ: {{message}}",
     "checkin_failed": "فشل تسجيل الوصول: {{message}}",

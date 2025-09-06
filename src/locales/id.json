@@ -36,7 +36,17 @@
     "deletion_premium": "Tidak Pernah",
     "btn_get_started": "Mulai",
     "btn_upgrade": "Upgrade Sekarang",
-    "btn_already_premium": "Sudah Premium"
+    "btn_already_premium": "Sudah Premium",
+    "btn_restore": "Pulihkan Pembelian",
+    "restore_success_title": "Pemulihan Berhasil",
+    "restore_success_body": "Manfaat Premium Anda telah dipulihkan.",
+    "hard_lock_title": "Pembelian Sudah Digunakan",
+    "hard_lock_body": "Pembelian ini secara permanen terhubung ke akun CronPost lain: {{masked_email}}. Untuk melanjutkan, silakan masuk ke akun tersebut atau beli paket baru melalui situs web kami.",
+    "hard_lock_body_fallback": "Pembelian ini secara permanen terhubung ke akun CronPost lain. Untuk melanjutkan, silakan masuk ke akun tersebut atau beli paket baru melalui situs web kami.",
+    "hard_lock_btn_buy_web": "Beli Paket Baru via Web",
+    "hard_lock_btn_ok": "Mengerti",
+    "upgrade_success_title" : "Upgrade Berhasil",
+    "upgrade_success_body" : "Anda sekarang adalah pengguna Premium! Nikmati semua fitur hebatnya."
   },
   "confirm_upgrade_modal": {
     "signin_required_title": "Wajib Masuk",
@@ -723,6 +733,8 @@
     "update_success": "Pengaturan notifikasi berhasil diperbarui."
   },
   "errors": {
+    "restore_failed": "Tidak dapat memulihkan pembelian Anda. Silakan coba lagi nanti.",
+    "auth_required_for_action": "Tindakan ini mengharuskan Anda untuk masuk. Silakan coba lagi.",
     "refresh_failed": "Kesalahan saat menyegarkan data: {{message}}",
     "generic": "Kesalahan: {{message}}",
     "checkin_failed": "Check-in gagal: {{message}}",

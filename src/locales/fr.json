@@ -36,7 +36,17 @@
     "deletion_premium": "Jamais",
     "btn_get_started": "Commencer",
     "btn_upgrade": "Mettre à niveau",
-    "btn_already_premium": "Déjà Premium"
+    "btn_already_premium": "Déjà Premium",
+    "btn_restore": "Restaurer les achats",
+    "restore_success_title": "Restauration réussie",
+    "restore_success_body": "Vos avantages Premium ont été restaurés.",
+    "hard_lock_title": "Achat utilisé",
+    "hard_lock_body": "Cet achat est lié de manière permanente à un autre compte CronPost : {{masked_email}}. Pour continuer, veuillez vous connecter à ce compte ou acheter un nouveau plan sur notre site web.",
+    "hard_lock_body_fallback": "Cet achat est lié de manière permanente à un autre compte CronPost. Pour continuer, veuillez vous connecter à ce compte ou acheter un nouveau plan sur notre site web.",
+    "hard_lock_btn_buy_web": "Acheter un nouveau plan via le Web",
+    "hard_lock_btn_ok": "J'ai compris",
+    "upgrade_success_title" : "Mise à niveau réussie",
+    "upgrade_success_body" : "Vous êtes maintenant un utilisateur Premium ! Profitez de toutes les fonctionnalités puissantes."
   },
   "confirm_upgrade_modal": {
     "signin_required_title": "Connexion requise",
@@ -723,6 +733,8 @@
     "update_success": "Paramètres de notification mis à jour avec succès."
   },
   "errors": {
+    "restore_failed": "Impossible de restaurer votre achat. Veuillez réessayer plus tard.",
+    "auth_required_for_action": "Cette action nécessite que vous soyez connecté. Veuillez réessayer.",
     "refresh_failed": "Erreur lors de l'actualisation des données : {{message}}",
     "generic": "Erreur : {{message}}",
     "checkin_failed": "Échec du pointage : {{message}}",

@@ -36,7 +36,17 @@
     "deletion_premium": "هرگز",
     "btn_get_started": "شروع کنید",
     "btn_upgrade": "اکنون ارتقا دهید",
-    "btn_already_premium": "از قبل پریمیوم است"
+    "btn_already_premium": "از قبل پریمیوم است",
+    "btn_restore": "بازیابی خریدهای انجام شده",
+    "restore_success_title": "بازیابی موفق بود",
+    "restore_success_body": "مزایای ویژه شما بازیابی شد.",
+    "hard_lock_title": "خرید استفاده شده",
+    "hard_lock_body": "این خرید به صورت دائمی به یک حساب دیگر CronPost پیوند خورده است: {{masked_email}}. برای ادامه، لطفاً به آن حساب وارد شوید یا یک طرح جدید از طریق وب‌سایت ما خریداری کنید.",
+    "hard_lock_body_fallback": "این خرید به صورت دائمی به یک حساب دیگر CronPost پیوند خورده است. برای ادامه، لطفاً به آن حساب وارد شوید یا یک طرح جدید از طریق وب‌سایت ما خریداری کنید.",
+    "hard_lock_btn_buy_web": "خرید طرح جدید از طریق وب",
+    "hard_lock_btn_ok": "متوجه شدم",
+    "upgrade_success_title" : "ارتقا موفقیت‌آمیز بود",
+    "upgrade_success_body" : "شما اکنون یک کاربر پریمیوم هستید! از تمام ویژگی‌های قدرتمند لذت ببرید."
   },
   "confirm_upgrade_modal": {
     "signin_required_title": "ورود الزامی است",
@@ -723,6 +733,8 @@
     "update_success": "تنظیمات اعلان با موفقیت به‌روزرسانی شد."
   },
   "errors": {
+    "restore_failed": "امکان بازیابی خرید شما وجود ندارد. لطفاً بعداً دوباره امتحان کنید.",
+    "auth_required_for_action": "این عمل به ورود به سیستم نیاز دارد. لطفاً دوباره امتحان کنید.",
     "refresh_failed": "خطا در بازخوانی داده‌ها: {{message}}",
     "generic": "خطا: {{message}}",
     "checkin_failed": "ورود ناموفق بود: {{message}}",

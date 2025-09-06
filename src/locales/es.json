@@ -36,7 +36,17 @@
     "deletion_premium": "Nunca",
     "btn_get_started": "Comenzar",
     "btn_upgrade": "Actualizar Ahora",
-    "btn_already_premium": "Ya eres Premium"
+    "btn_already_premium": "Ya eres Premium",
+    "btn_restore": "Restaurar Compras",
+    "restore_success_title": "Restauración Exitosa",
+    "restore_success_body": "Sus beneficios Premium han sido restaurados.",
+    "hard_lock_title": "Compra Utilizada",
+    "hard_lock_body": "Esta compra está vinculada permanentemente a otra cuenta de CronPost: {{masked_email}}. Para continuar, inicie sesión en esa cuenta o compre un nuevo plan en nuestro sitio web.",
+    "hard_lock_body_fallback": "Esta compra está vinculada permanentemente a otra cuenta de CronPost. Para continuar, inicie sesión en esa cuenta o compre un nuevo plan en nuestro sitio web.",
+    "hard_lock_btn_buy_web": "Comprar Nuevo Plan por Web",
+    "hard_lock_btn_ok": "Entendido",
+    "upgrade_success_title" : "Actualización Exitosa",
+    "upgrade_success_body" : "¡Ahora eres un usuario Premium! Disfruta de todas las funciones potentes."
   },
   "confirm_upgrade_modal": {
     "signin_required_title": "Se Requiere Iniciar Sesión",
@@ -723,6 +733,8 @@
     "update_success": "Configuración de notificaciones actualizada con éxito."
   },
   "errors": {
+    "restore_failed": "No se pudo restaurar su compra. Inténtelo de nuevo más tarde.",
+    "auth_required_for_action": "Esta acción requiere que inicie sesión. Por favor, inténtelo de nuevo.",
     "refresh_failed": "Error al actualizar los datos: {{message}}",
     "generic": "Error: {{message}}",
     "checkin_failed": "Fallo en el check-in: {{message}}",

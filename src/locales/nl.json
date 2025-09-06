@@ -36,7 +36,17 @@
     "deletion_premium": "Nooit",
     "btn_get_started": "Begin Nu",
     "btn_upgrade": "Upgrade Nu",
-    "btn_already_premium": "Al Premium"
+    "btn_already_premium": "Al Premium",
+    "btn_restore": "Aankopen herstellen",
+    "restore_success_title": "Herstel succesvol",
+    "restore_success_body": "Uw Premium-voordelen zijn hersteld.",
+    "hard_lock_title": "Aankoop gebruikt",
+    "hard_lock_body": "Deze aankoop is permanent gekoppeld aan een ander CronPost-account: {{masked_email}}. Om verder te gaan, logt u in op dat account of koopt u een nieuw plan via onze website.",
+    "hard_lock_body_fallback": "Deze aankoop is permanent gekoppeld aan een ander CronPost-account. Om verder te gaan, logt u in op dat account of koopt u een nieuw plan via onze website.",
+    "hard_lock_btn_buy_web": "Nieuw plan kopen via de website",
+    "hard_lock_btn_ok": "Begrepen",
+    "upgrade_success_title" : "Upgrade succesvol",
+    "upgrade_success_body" : "U bent nu een Premium-gebruiker! Geniet van alle krachtige functies."  
   },
   "confirm_upgrade_modal": {
     "signin_required_title": "Inloggen Vereist",
@@ -723,6 +733,8 @@
     "update_success": "Notificatie-instellingen succesvol bijgewerkt."
   },
   "errors": {
+    "restore_failed": "Kon uw aankoop niet herstellen. Probeer het later opnieuw.",
+    "auth_required_for_action": "Deze actie vereist dat u bent ingelogd. Probeer het opnieuw.",
     "refresh_failed": "Fout bij vernieuwen van gegevens: {{message}}",
     "generic": "Fout: {{message}}",
     "checkin_failed": "Check-in mislukt: {{message}}",

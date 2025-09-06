@@ -36,7 +36,17 @@
     "deletion_premium": "なし",
     "btn_get_started": "始める",
     "btn_upgrade": "今すぐアップグレード",
-    "btn_already_premium": "プレミアム会員です"
+    "btn_already_premium": "プレミアム会員です",
+    "btn_restore": "購入を復元",
+    "restore_success_title": "復元に成功しました",
+    "restore_success_body": "プレミアム特典が復元されました。",
+    "hard_lock_title": "購入済み",
+    "hard_lock_body": "この購入は、別のCronPostアカウントに永久にリンクされています：{{masked_email}}。続行するには、そのアカウントにサインインするか、当社のウェブサイトで新しいプランを購入してください。",
+    "hard_lock_body_fallback": "この購入は、別のCronPostアカウントに永久にリンクされています。続行するには、そのアカウントにサインインするか、当社のウェブサイトで新しいプランを購入してください。",
+    "hard_lock_btn_buy_web": "ウェブから新しいプランを購入",
+    "hard_lock_btn_ok": "了解",
+    "upgrade_success_title" : "アップグレード成功",
+    "upgrade_success_body" : "あなたは今、プレミアムユーザーです！すべての強力な機能をお楽しみください。"
   },
   "confirm_upgrade_modal": {
     "signin_required_title": "ログインが必要です",
@@ -723,6 +733,8 @@
     "update_success": "通知設定が正常に更新されました。"
   },
   "errors": {
+    "restore_failed": "購入を復元できませんでした。後でもう一度お試しください。",
+    "auth_required_for_action": "このアクションにはログインが必要です。もう一度お試しください。",
     "refresh_failed": "データ更新エラー：{{message}}",
     "generic": "エラー：{{message}}",
     "checkin_failed": "チェックインに失敗しました：{{message}}",
