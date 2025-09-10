@@ -1,6 +1,7 @@
 // app/signup.tsx
-// Version: 1.3.0
+// Version: 1.3.1
 
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { Link, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,7 +29,7 @@ import { translateApiError } from '../src/utils/errorTranslator';
 const SignUpScreen = () => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { signInWithGoogle, isAuthenticated } = useAuth();
+  const { signInWithGoogle, signInWithApple, isAuthenticated } = useAuth();
   const { theme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -79,6 +80,16 @@ const SignUpScreen = () => {
       const friendlyError = translateApiError(err);
       setError(friendlyError);
       Alert.alert(t('errors.access_denied'), friendlyError);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    setError(null);
+    try {
+      await signInWithApple();
+    } catch (err: any) {
+      // The error alert is already handled in AuthContext
+      console.error("Apple sign-in error on signup screen:", err);
     }
   };
 
@@ -245,6 +256,16 @@ const SignUpScreen = () => {
             <Text style={styles.googleButtonText}>{t('header_static.signup')} with Google</Text>
           </TouchableOpacity>
 
+          {Platform.OS === 'ios' && (
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+              buttonStyle={theme === 'dark' ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+              cornerRadius={8}
+              style={{ width: '100%', height: 50, marginTop: 15 }}
+              onPress={handleAppleSignIn}
+            />
+          )}
+          
           <View style={styles.footerContainer}>
             <Link href="/">
               <Text style={styles.linkText}>{t('signup_page.link_signin')}</Text>
