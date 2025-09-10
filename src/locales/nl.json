@@ -1017,6 +1017,7 @@
       "email_already_confirmed": "E-mail {{email}} was al bevestigd. U kunt aanmelden.",
       "email_confirmation_invalid": "De e-mailbevestigingslink is ongeldig of verlopen. Probeer de bevestigingsmail opnieuw te verzenden.",
       "google_oauth_error": "Aanmelden met Google mislukt: {{detail}}",
+      "apple_oauth_error": "Aanmelden met Apple mislukt: {{detail}}",
       "password_reset_success": "Uw wachtwoord is succesvol opnieuw ingesteld. Meld u aan met uw nieuwe wachtwoord.",
       "signout_success": "U bent succesvol uitgelogd."
     }

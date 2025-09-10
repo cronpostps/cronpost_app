@@ -4,6 +4,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useRouter } from 'expo-router';
+import * as StoreReview from 'expo-store-review';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -88,18 +89,27 @@ export default function SettingsScreen() {
 
   const [isLanguagePickerVisible, setLanguagePickerVisible] = useState(false);
 
-  const handleRateApp = () => {
+  const handleRateApp = async () => {
     const storeUrl =
       Platform.OS === 'ios'
-        ? 'https://apps.apple.com/app/your-app-id'
-        : 'market://details?id=your.package.name';
-    Linking.canOpenURL(storeUrl).then((supported) => {
-      if (supported) {
-        Linking.openURL(storeUrl);
+        ? `itms-apps://itunes.apple.com/app/viewContentsUserReviews/id6751339486?action=write-review`
+        : 'market://details?id=com.cronpost.app';
+
+    try {
+      const isAvailable = await StoreReview.isAvailableAsync();
+      if (isAvailable) {
+        await StoreReview.requestReview();
       } else {
-        Alert.alert('Error', 'Could not open the store link.');
+        const supported = await Linking.canOpenURL(storeUrl);
+        if (supported) {
+          await Linking.openURL(storeUrl);
+        } else {
+          console.error('Store link is not supported on this device.');
+        }
       }
-    });
+    } catch (error) {
+      console.error('An error occurred while handling the app rate action:', error);
+    }
   };
 
   const sections: SettingsSection[] = [

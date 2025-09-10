@@ -1017,6 +1017,7 @@
       "email_already_confirmed": "{{email}} e-postası zaten onaylanmıştı. Giriş yapabilirsiniz.",
       "email_confirmation_invalid": "E-posta onay bağlantısı geçersiz veya süresi dolmuş. Lütfen onay e-postasını yeniden göndermeyi deneyin.",
       "google_oauth_error": "Google ile Giriş başarısız: {{detail}}",
+      "apple_oauth_error": "Apple ile Giriş başarısız: {{detail}}",
       "password_reset_success": "Şifreniz başarıyla sıfırlandı. Lütfen yeni şifrenizle giriş yapın.",
       "signout_success": "Başarıyla çıkış yaptınız."
     }

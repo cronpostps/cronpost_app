@@ -1017,6 +1017,7 @@
       "email_already_confirmed": "E-Mail {{email}} wurde bereits bestätigt. Sie können sich anmelden.",
       "email_confirmation_invalid": "Der E-Mail-Bestätigungslink ist ungültig oder abgelaufen. Bitte versuchen Sie, die Bestätigungs-E-Mail erneut zu senden.",
       "google_oauth_error": "Google-Anmeldung fehlgeschlagen: {{detail}}",
+      "apple_oauth_error": "Apple-Anmeldung fehlgeschlagen: {{detail}}",
       "password_reset_success": "Ihr Passwort wurde erfolgreich zurückgesetzt. Bitte melden Sie sich mit Ihrem neuen Passwort an.",
       "signout_success": "Sie wurden erfolgreich abgemeldet."
     }

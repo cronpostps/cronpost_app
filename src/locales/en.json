@@ -999,6 +999,7 @@
       "email_already_confirmed": "Email {{email}} was already confirmed. You can sign in.",
       "email_confirmation_invalid": "The email confirmation link is invalid or has expired. Please try resending the confirmation email.",
       "google_oauth_error": "Google Sign-In failed: {{detail}}",
+      "apple_oauth_error": "Could not sign in with Apple. {{detail}}",
       "password_reset_success": "Your password has been successfully reset. Please sign in with your new password.",
       "signout_success": "You have been signed out successfully."
     }

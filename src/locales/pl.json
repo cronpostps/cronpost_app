@@ -1017,6 +1017,7 @@
       "email_already_confirmed": "E-mail {{email}} został już potwierdzony. Możesz się zalogować.",
       "email_confirmation_invalid": "Link potwierdzający e-mail jest nieprawidłowy lub wygasł. Spróbuj wysłać ponownie e-mail potwierdzający.",
       "google_oauth_error": "Logowanie przez Google nie powiodło się: {{detail}}",
+      "apple_oauth_error": "Logowanie przez Apple nie powiodło się: {{detail}}",
       "password_reset_success": "Twoje hasło zostało pomyślnie zresetowane. Zaloguj się nowym hasłem.",
       "signout_success": "Zostałeś pomyślnie wylogowany."
     }

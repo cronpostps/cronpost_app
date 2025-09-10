@@ -999,6 +999,7 @@
       "email_already_confirmed": "O email {{email}} já foi confirmado. Pode iniciar sessão.",
       "email_confirmation_invalid": "O link de confirmação de email é inválido ou expirou. Por favor, tente reenviar o email de confirmação.",
       "google_oauth_error": "O início de sessão com a Google falhou: {{detail}}",
+      "apple_oauth_error": "O início de sessão com a Apple falhou: {{detail}}",
       "password_reset_success": "A sua palavra-passe foi redefinida com sucesso. Por favor, inicie sessão com a sua nova palavra-passe.",
       "signout_success": "Terminou a sessão com sucesso."
     }

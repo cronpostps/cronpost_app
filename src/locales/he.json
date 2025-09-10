@@ -999,6 +999,7 @@
       "email_already_confirmed": "האימייל {{email}} כבר אושר. תוכל להתחבר.",
       "email_confirmation_invalid": "קישור אישור האימייל אינו חוקי או שפג תוקפו. אנא נסה לשלוח מחדש את אימייל האישור.",
       "google_oauth_error": "התחברות גוגל נכשלה: {{detail}}",
+      "apple_oauth_error": "התחברות אפל נכשלה: {{detail}}",
       "password_reset_success": "הסיסמה שלך אופסה בהצלחה. אנא התחבר עם הסיסמה החדשה שלך.",
       "signout_success": "התנתקת בהצלחה."
     }

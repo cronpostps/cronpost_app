@@ -1,10 +1,19 @@
 // src/api/api.ts
+// version 1.1.0
 
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../config/apiConfig';
 
 const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Client-Type': 'mobile',
+  },
+});
+
+const apiWithoutInterceptors = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
@@ -66,7 +75,7 @@ api.interceptors.response.use(
       }
 
       try {
-        const { data } = await api.post('/api/auth/refresh', {
+        const { data } = await apiWithoutInterceptors.post('/api/auth/refresh', {
           refresh_token: refreshToken,
           access_token: accessToken,
         });

@@ -1017,6 +1017,7 @@
       "email_already_confirmed": "Email {{email}} уже был подтвержден. Вы можете войти.",
       "email_confirmation_invalid": "Ссылка для подтверждения email недействительна или истекла. Пожалуйста, попробуйте отправить письмо с подтверждением повторно.",
       "google_oauth_error": "Ошибка входа через Google: {{detail}}",
+      "apple_oauth_error": "Ошибка входа через Apple: {{detail}}",
       "password_reset_success": "Ваш пароль успешно сброшен. Пожалуйста, войдите с вашим новым паролем.",
       "signout_success": "Вы успешно вышли из системы."
     }

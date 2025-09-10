@@ -1,6 +1,7 @@
 // src/store/AuthContext.tsx
-// Version: 2.2.9
+// Version: 2.3.1
 
+import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Google from 'expo-auth-session/providers/google';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
@@ -293,82 +294,94 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
       if (response) { handleGoogleResponse(); }
     }, [response, handleSuccessfulLogin]);
   
-    useEffect(() => {
-      const loadTokens = async () => {
-        console.log("--- Auth: 1. Bắt đầu quá trình tải token ---");
-        try {
-          const accessToken = await SecureStore.getItemAsync(TOKEN_KEY);
-          
-          if (accessToken) {
-            console.log("--- Auth: 2. Đã tìm thấy access token ---");
-            setAuthState(prev => ({ ...prev, accessToken, isAuthenticated: true }));
-            console.log("--- Auth: 3. Đang lấy thông tin người dùng ---");
-            const customerInfo = await Purchases.getCustomerInfo();
-            const premiumEntitlement = customerInfo.entitlements.active[revenueCatConfig.entitlementId];
-            setIsPremium(typeof premiumEntitlement !== 'undefined');
+  useEffect(() => {
+    const loadTokens = async () => {
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => {
+          console.warn('[Auth Timeout] Quá trình xác thực mất quá 30 giây. Đang tiến hành đăng xuất.');
+          reject(new Error('Auth process timed out'));
+        }, 30000)
+      );
 
-        try {
-          const userResponse = await api.get('/api/users/me');
-          const currentUser: User = userResponse.data;
-          setUser(currentUser);
+      console.log("--- Auth: 1. Bắt đầu quá trình tải token ---");
+      try {
+        await Promise.race([
+          (async () => {
+            const accessToken = await SecureStore.getItemAsync(TOKEN_KEY);
 
-          try {
-              console.log(`[RevenueCat Debug] (onAppLoad) Attempting to log in user with ID: ${currentUser.id}`);
-              await Purchases.logIn(currentUser.id);
-              console.log(`[RevenueCat Debug] (onAppLoad) Successfully logged in user: ${currentUser.id}`);
-          } catch (e: any) {
-              console.error(`[RevenueCat Debug] (onAppLoad) ERROR logging in user: ${currentUser.id}`, e);
-          }
+            if (accessToken) {
+              console.log("--- Auth: 2. Đã tìm thấy access token ---");
+              setAuthState(prev => ({ ...prev, accessToken, isAuthenticated: true }));
+              console.log("--- Auth: 3. Đang lấy thông tin người dùng ---");
+              // const customerInfo = await Purchases.getCustomerInfo();
+              // const premiumEntitlement = customerInfo.entitlements.active[revenueCatConfig.entitlementId];
+              // setIsPremium(typeof premiumEntitlement !== 'undefined');
 
-          console.log("--- Auth: 4. Lấy thông tin người dùng thành công. Trạng thái tài khoản:", currentUser.account_status);
-          
-          const customerInfo = await Purchases.getCustomerInfo();
-          const premiumEntitlement = customerInfo.entitlements.active[revenueCatConfig.entitlementId];
-          setIsPremium(typeof premiumEntitlement !== 'undefined');
+              try {
+                const userResponse = await api.get('/api/users/me');
+                const currentUser: User = userResponse.data;
+                setUser(currentUser);
 
-          useIamStore.getState().fetchUnreadCount();
-          await performAutoCheckinIfNeeded(currentUser);
-          const biometricsKey = `biometrics_enabled_for_${currentUser.id}`;
-          const isBiometricsEnabled = await SecureStore.getItemAsync(biometricsKey);
+                try {
+                    console.log(`[RevenueCat Debug] (onAppLoad) Attempting to log in user with ID: ${currentUser.id}`);
+                    await Purchases.logIn(currentUser.id);
+                    console.log(`[RevenueCat Debug] (onAppLoad) Successfully logged in user: ${currentUser.id}`);
+                } catch (e: any) {
+                    console.error(`[RevenueCat Debug] (onAppLoad) ERROR logging in user: ${currentUser.id}`, e);
+                }
 
-          if (currentUser.has_pin) {
-            console.log("--- Auth: 5. Người dùng có mã PIN. Chuẩn bị khóa ứng dụng ---");
-            setIsAppLocked(true);
-            if (isBiometricsEnabled === 'true') {
-              const result = await LocalAuthentication.authenticateAsync({
-                promptMessage: i18n.t('biometrics.prompt_message'),
-              });
-              if (result.success) {
-                setIsAppLocked(false);
-              } else {
-                setPinModalVisible(true);
+                console.log("--- Auth: 4. Lấy thông tin người dùng thành công. Trạng thái tài khoản:", currentUser.account_status);
+
+                const customerInfo = await Purchases.getCustomerInfo();
+                const premiumEntitlement = customerInfo.entitlements.active[revenueCatConfig.entitlementId];
+                setIsPremium(typeof premiumEntitlement !== 'undefined');
+
+                useIamStore.getState().fetchUnreadCount();
+                await performAutoCheckinIfNeeded(currentUser);
+                const biometricsKey = `biometrics_enabled_for_${currentUser.id}`;
+                const isBiometricsEnabled = await SecureStore.getItemAsync(biometricsKey);
+
+                if (currentUser.has_pin) {
+                  console.log("--- Auth: 5. Người dùng có mã PIN. Chuẩn bị khóa ứng dụng ---");
+                  setIsAppLocked(true);
+                  if (isBiometricsEnabled === 'true') {
+                    const result = await LocalAuthentication.authenticateAsync({
+                      promptMessage: i18n.t('biometrics.prompt_message'),
+                    });
+                    if (result.success) {
+                      setIsAppLocked(false);
+                    } else {
+                      setPinModalVisible(true);
+                    }
+                  } else {
+                    setPinModalVisible(true);
+                  }
+                } else {
+                  console.log("--- Auth: 7. Người dùng không có PIN. Mở khóa ứng dụng ---");
+                  setIsAppLocked(false);
+                }
+              } catch (apiError: any) {
+                console.error("--- Auth: 3b. LỖI KHI GỌI API, TIẾN HÀNH ĐĂNG XUẤT ---:", apiError.message);
+                throw apiError;
               }
             } else {
-              setPinModalVisible(true);
+              console.log("--- Auth: 2. Không tìm thấy access token ---");
+              setAuthState({ accessToken: null, refreshToken: null, isAuthenticated: false });
+              setIsAppLocked(false);
             }
-          } else {
-            console.log("--- Auth: 7. Người dùng không có PIN. Mở khóa ứng dụng ---");
-            setIsAppLocked(false);
-          }
-        } catch (apiError: any) {
-          console.error("--- Auth: 3b. LỖI KHI GỌI API, TIẾN HÀNH ĐĂNG XUẤT ---:", apiError.message);
-          throw apiError;
-        }
-      } else {
-            console.log("--- Auth: 2. Không tìm thấy access token ---");
-            setAuthState({ accessToken: null, refreshToken: null, isAuthenticated: false });
-            setIsAppLocked(false);
-          }
-        } catch (error) {
-          console.error("--- Auth: LỖI trong quá trình loadTokens, thực hiện signOut ---", error);
-          await signOut();
-        } finally {
-          console.log("--- Auth: 8. Kết thúc quá trình tải token ---");
-          setIsLoading(false);
-        }
-      };
-      loadTokens();
-    }, [performAutoCheckinIfNeeded, signOut]);
+          })(),
+          timeoutPromise
+        ]);
+      } catch (error) {
+        console.error("--- Auth: LỖI trong quá trình loadTokens, thực hiện signOut ---", error);
+        await signOut();
+      } finally {
+        console.log("--- Auth: 8. Kết thúc quá trình tải token ---");
+        setIsLoading(false);
+      }
+    };
+    loadTokens();
+  }, [performAutoCheckinIfNeeded, signOut]);
     
     useEffect(() => {
        if (user && !isLoading && !hasRegisteredForPush.current) { 
@@ -394,6 +407,42 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
       await promptAsync();
     };
   
+    const signInWithApple = async () => {
+      setIsAuthProcessing(true);
+      try {
+        const credential = await AppleAuthentication.signInAsync({
+          requestedScopes: [
+            AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+            AppleAuthentication.AppleAuthenticationScope.EMAIL,
+          ],
+        });
+
+        // Gửi thông tin nhận được về backend
+        const backendResponse = await api.post('/api/auth/apple/mobile', {
+          identity_token: credential.identityToken,
+          full_name: credential.fullName ? `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() : null,
+          email: credential.email
+        });
+
+        const { access_token, refresh_token } = backendResponse.data;
+        await handleSuccessfulLogin(access_token, refresh_token);
+
+      } catch (e: any) {
+        setIsAuthProcessing(false); // Rất quan trọng: tắt loading khi có lỗi
+        if (e.code === 'ERR_REQUEST_CANCELED') {
+          // Người dùng đã chủ động hủy, không cần thông báo lỗi
+          console.log('Apple Sign-In was canceled by the user.');
+        } else {
+          // Các lỗi khác
+          const friendlyError = translateApiError(e);
+          Alert.alert(
+            i18n.t('signin_page.title'), 
+            i18n.t('signin_page.status.apple_oauth_error', { detail: friendlyError })
+          );
+        }
+      }
+    };
+
     const refreshUser = async () => {
       try {
           const userResponse = await api.get('/api/users/me');
@@ -425,7 +474,7 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
         }
     };
   
-    const value = { signIn, signInWithGoogle, signOut, user, isLoading, isAuthenticated: authState.isAuthenticated, isAuthProcessing, refreshUser, isPremium, isRevenueCatReady };
+    const value = { signIn, signInWithGoogle, signInWithApple, signOut, user, isLoading, isAuthenticated: authState.isAuthenticated, isAuthProcessing, refreshUser, isPremium, isRevenueCatReady };
     
     const styles = StyleSheet.create({
         lockScreenContainer: {

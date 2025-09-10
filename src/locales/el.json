@@ -1017,6 +1017,7 @@
       "email_already_confirmed": "Το email {{email}} είχε ήδη επιβεβαιωθεί. Μπορείτε να συνδεθείτε.",
       "email_confirmation_invalid": "Ο σύνδεσμος επιβεβαίωσης email είναι άκυρος ή έχει λήξει. Παρακαλώ προσπαθήστε να ξαναστείλετε το email επιβεβαίωσης.",
       "google_oauth_error": "Η Σύνδεση με Google απέτυχε: {{detail}}",
+      "apple_oauth_error": "Η Σύνδεση με Apple απέτυχε: {{detail}}",
       "password_reset_success": "Ο κωδικός πρόσβασής σας έχει επαναφερθεί επιτυχώς. Παρακαλώ συνδεθείτε με τον νέο σας κωδικό.",
       "signout_success": "Έχετε αποσυνδεθεί επιτυχώς."
     }

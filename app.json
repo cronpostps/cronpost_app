@@ -2,7 +2,7 @@
   "expo": {
     "name": "CronPost",
     "slug": "CronPost",
-    "version": "1.0.7",
+    "version": "1.0.10",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "com.cronpost.app",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "3",
+      "buildNumber": "5",
       "infoPlist": {
         "NSContactsUsageDescription": "CronPost uses your contacts to help you easily select recipients for your messages.",
         "NSFaceIDUsageDescription": "CronPost uses Face ID to securely unlock your account and verify critical actions.",
@@ -61,7 +61,7 @@
         "android.permission.POST_NOTIFICATIONS",
         "com.android.vending.BILLING"
       ],
-      "versionCode": 8,
+      "versionCode": 11,
       "softwareKeyboardLayoutMode": "pan"
     },
     "notification": {
@@ -86,6 +86,7 @@
             "crashlytics_debug_enabled": true
           }
       ],
+      "expo-apple-authentication",
       "@react-native-firebase/messaging",
       "@react-native-firebase/crashlytics",
       [

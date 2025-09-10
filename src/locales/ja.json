@@ -1017,6 +1017,7 @@
       "email_already_confirmed": "Eメール{{email}}は既に確認済みです。サインインできます。",
       "email_confirmation_invalid": "Eメール確認リンクが無効か、期限切れです。確認メールの再送信を試みてください。",
       "google_oauth_error": "Googleサインインに失敗しました：{{detail}}",
+      "apple_oauth_error": "Appleサインインに失敗しました：{{detail}}",
       "password_reset_success": "パスワードが正常にリセットされました。新しいパスワードでサインインしてください。",
       "signout_success": "正常にサインアウトしました。"
     }

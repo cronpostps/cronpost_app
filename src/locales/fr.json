@@ -1017,6 +1017,7 @@
       "email_already_confirmed": "L'e-mail {{email}} était déjà confirmé. Vous pouvez vous connecter.",
       "email_confirmation_invalid": "Le lien de confirmation d'e-mail est invalide ou a expiré. Veuillez essayer de renvoyer l'e-mail de confirmation.",
       "google_oauth_error": "La connexion avec Google a échoué : {{detail}}",
+      "apple_oauth_error": "La connexion avec Apple a échoué : {{detail}}",
       "password_reset_success": "Votre mot de passe a été réinitialisé avec succès. Veuillez vous connecter avec votre nouveau mot de passe.",
       "signout_success": "Vous avez été déconnecté avec succès."
     }

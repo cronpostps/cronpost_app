@@ -1017,6 +1017,7 @@
       "email_already_confirmed": "Email {{email}} đã được xác nhận. Bạn có thể đăng nhập.",
       "email_confirmation_invalid": "Liên kết xác nhận email không hợp lệ hoặc đã hết hạn. Vui lòng thử gửi lại email xác nhận.",
       "google_oauth_error": "Đăng nhập bằng Google thất bại: {{detail}}",
+      "apple_oauth_error": "Đăng nhập bằng Apple thất bại: {{detail}}",
       "password_reset_success": "Mật khẩu của bạn đã được đặt lại thành công. Vui lòng đăng nhập bằng mật khẩu mới của bạn.",
       "signout_success": "Bạn đã đăng xuất thành công."
     }

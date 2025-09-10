@@ -1017,6 +1017,7 @@
       "email_already_confirmed": "Email {{email}} sudah dikonfirmasi. Anda dapat masuk.",
       "email_confirmation_invalid": "Tautan konfirmasi email tidak valid atau telah kedaluwarsa. Silakan coba kirim ulang email konfirmasi.",
       "google_oauth_error": "Masuk dengan Google gagal: {{detail}}",
+      "apple_oauth_error": "Masuk dengan Apple gagal: {{detail}}",
       "password_reset_success": "Kata sandi Anda telah berhasil diatur ulang. Silakan masuk dengan kata sandi baru Anda.",
       "signout_success": "Anda telah berhasil keluar."
     }

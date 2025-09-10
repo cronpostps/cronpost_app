@@ -1017,6 +1017,7 @@
       "email_already_confirmed": "{{email}} 이메일은 이미 확인되었습니다. 로그인할 수 있습니다.",
       "email_confirmation_invalid": "이메일 확인 링크가 유효하지 않거나 만료되었습니다. 확인 이메일을 다시 보내보세요.",
       "google_oauth_error": "Google 로그인 실패: {{detail}}",
+      "apple_oauth_error": "Apple 로그인 실패: {{detail}}",
       "password_reset_success": "비밀번호가 성공적으로 재설정되었습니다. 새 비밀번호로 로그인해 주세요.",
       "signout_success": "성공적으로 로그아웃되었습니다."
     }

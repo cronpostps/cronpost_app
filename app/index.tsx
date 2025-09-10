@@ -1,6 +1,7 @@
 // app/index.tsx
-// Version: 1.6.0
+// Version: 1.6.1
 
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { Link } from 'expo-router';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -54,7 +55,7 @@ const globeIcon = `
 
 const LoginScreen = () => {
   const { t, i18n } = useTranslation();
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn, signInWithGoogle, signInWithApple } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -79,19 +80,7 @@ const LoginScreen = () => {
     }
   };
 
-  // const handleGoogleSignIn = async () => {
-  //   setError(null);
-  //   try {
-  //     await signInWithGoogle();
-  //   } catch (err: any) {
-  //     const friendlyError = translateApiError(err);
-  //     setError(friendlyError);
-  //     Alert.alert(t('errors.access_denied'), friendlyError);
-  //   }
-  // };
-  // HÀM ĐÃ CẬP NHẬT
   const handleGoogleSignIn = async () => {
-    // Ngăn người dùng nhấn nhiều lần
     if (isLoading) return; 
 
     setIsLoading(true);
@@ -102,12 +91,20 @@ const LoginScreen = () => {
       const friendlyError = translateApiError(err);
       setError(friendlyError);
       Alert.alert(t('errors.access_denied'), friendlyError);
-      setIsLoading(false); // Đảm bảo tắt loading khi có lỗi
-    } 
-    // Không cần finally setIsLoading(false) ở đây,
-    // vì sau khi xác thực thành công, app sẽ chuyển màn hình.
-    // AuthContext sẽ xử lý việc tắt loading nếu cần.
+      setIsLoading(false);
+    }
   };
+
+  const handleAppleSignIn = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    try {
+      await signInWithApple();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (e: any) {
+      setIsLoading(false);
+    }
+  }; 
 
   const styles = StyleSheet.create({
     safeArea: {
@@ -300,6 +297,16 @@ const LoginScreen = () => {
             />
             <Text style={styles.googleButtonText}>{t('signin_page.google_alt')}</Text>
           </TouchableOpacity>
+
+          {Platform.OS === 'ios' && (
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+              buttonStyle={theme === 'dark' ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+              cornerRadius={8}
+              style={{ width: '100%', height: 50, marginTop: 15 }}
+              onPress={handleAppleSignIn}
+            />
+          )}
 
           <View style={styles.footerContainer}>
             <View style={styles.linkContainer}>
