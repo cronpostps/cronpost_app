@@ -152,6 +152,13 @@
     "countdown_label_inactive_im": "A IM está Inativa. Ative-a para iniciar o processo UCM.",
     "countdown_label_clc_active": "O processo UCM está ativo."
   },
+  "delete_account_page": {
+    "title": "Excluir conta",
+    "warning_text": "Esta ação é irreversível. Todos os seus dados serão excluídos permanentemente. Para prosseguir, confirme sua senha atual.",
+    "confirm_delete_body": "Esta ação não pode ser desfeita e todos os seus dados serão perdidos para sempre. Você tem certeza absoluta?",
+    "pin_prompt": "Digite seu PIN para confirmar a exclusão da conta",
+    "success_body": "Sua conta foi excluída com sucesso. Você será desconectado agora."
+  },
   "scm_page": {
     "title": "Mensageiro Cron Simples - CronPost",
     "header": "Mensageiro Cron Simples (SCM)",

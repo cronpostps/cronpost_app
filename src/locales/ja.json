@@ -152,6 +152,13 @@
     "countdown_label_inactive_im": "IMが非アクティブです。UCMプロセスを開始するには有効化してください。",
     "countdown_label_clc_active": "UCMプロセスはアクティブです。"
   },
+  "delete_account_page": {
+    "title": "アカウントを削除",
+    "warning_text": "この操作は元に戻せません。すべてのデータが完全に削除されます。続行するには、現在のパスワードを確認してください。",
+    "confirm_delete_body": "この操作は元に戻すことができず、すべてのデータが永久に失われます。本当によろしいですか？",
+    "pin_prompt": "アカウントの削除を確認するにはPINを入力してください",
+    "success_body": "アカウントは正常に削除されました。これからログアウトします。"
+  },
   "scm_page": {
     "title": "シンプルクロンメッセンジャー - CronPost",
     "header": "シンプルクロンメッセンジャー (SCM)",

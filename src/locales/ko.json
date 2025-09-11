@@ -152,6 +152,13 @@
     "countdown_label_inactive_im": "IM이 비활성 상태입니다. UCM 프로세스를 시작하려면 활성화하세요.",
     "countdown_label_clc_active": "UCM 프로세스가 활성 상태입니다."
   },
+  "delete_account_page": {
+    "title": "계정 삭제",
+    "warning_text": "이 작업은 되돌릴 수 없습니다. 모든 데이터가 영구적으로 삭제됩니다. 계속하려면 현재 비밀번호를 확인하십시오.",
+    "confirm_delete_body": "이 작업은 취소할 수 없으며 모든 데이터가 영원히 손실됩니다. 정말로 삭제하시겠습니까?",
+    "pin_prompt": "계정 삭제를 확인하려면 PIN을 입력하세요",
+    "success_body": "계정이 성공적으로 삭제되었습니다. 지금 로그아웃됩니다."
+  },
   "scm_page": {
     "title": "간편 크론 메신저 - CronPost",
     "header": "간편 크론 메신저 (SCM)",

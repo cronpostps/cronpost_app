@@ -152,6 +152,13 @@
     "countdown_label_inactive_im": "IM Pasif. UCM sürecini başlatmak için etkinleştirin.",
     "countdown_label_clc_active": "UCM süreci aktif."
   },
+  "delete_account_page": {
+    "title": "Hesabı Sil",
+    "warning_text": "Bu işlem geri alınamaz. Tüm verileriniz kalıcı olarak silinecektir. Devam etmek için lütfen mevcut şifrenizi onaylayın.",
+    "confirm_delete_body": "Bu işlem geri alınamaz ve tüm verileriniz sonsuza dek kaybolur. Kesinlikle emin misiniz?",
+    "pin_prompt": "Hesap silme işlemini onaylamak için PIN'inizi girin",
+    "success_body": "Hesabınız başarıyla silindi. Şimdi oturumunuz kapatılacak."
+  },
   "scm_page": {
     "title": "Basit Cron Mesajlaşma - CronPost",
     "header": "Basit Cron Mesajlaşma (SCM)",

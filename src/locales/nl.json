@@ -152,6 +152,13 @@
     "countdown_label_inactive_im": "IM is inactief. Activeer het om het UCM-proces te starten.",
     "countdown_label_clc_active": "Het UCM-proces is actief."
   },
+  "delete_account_page": {
+    "title": "Account verwijderen",
+    "warning_text": "Deze actie is onomkeerbaar. Al uw gegevens worden permanent verwijderd. Om door te gaan, bevestig uw huidige wachtwoord.",
+    "confirm_delete_body": "Deze actie kan niet ongedaan worden gemaakt en al uw gegevens gaan voorgoed verloren. Weet u het absoluut zeker?",
+    "pin_prompt": "Voer uw pincode in om het verwijderen van het account te bevestigen",
+    "success_body": "Uw account is succesvol verwijderd. U wordt nu uitgelogd."
+  },
   "scm_page": {
     "title": "Eenvoudige Cron Messenger - CronPost",
     "header": "Eenvoudige Cron Messenger (SCM)",

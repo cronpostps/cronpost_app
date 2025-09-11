@@ -1,5 +1,5 @@
 // app/(main)/settings/_layout.tsx
-// Version 1.2.0
+// Version 1.2.1
 
 import { Stack } from 'expo-router';
 import React from 'react';
@@ -23,6 +23,7 @@ export default function SettingsStackLayout() {
       <Stack.Screen name="index" options={{ title: t('settings_page.title'), headerShown: false }} />
       <Stack.Screen name="security" options={{ title: t('security_page.title') }} />
       <Stack.Screen name="profile" options={{ title: t('profile_page.title') }} />
+      <Stack.Screen name="delete-account" options={{ title: t('delete_account_page.title') }} />
       <Stack.Screen name="sendingHistory" options={{ title: t('history_page.title') }} />
       <Stack.Screen name="createPin" options={{ title: t('create_pin_page.title') }} />
       <Stack.Screen name="changePin" options={{ title: t('change_pin_page.title') }} />

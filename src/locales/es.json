@@ -152,6 +152,13 @@
     "countdown_label_inactive_im": "El IM está Inactivo. Actívalo para iniciar el proceso UCM.",
     "countdown_label_clc_active": "El proceso UCM está activo."
   },
+  "delete_account_page": {
+    "title": "Eliminar cuenta",
+    "warning_text": "Esta acción es irreversible. Todos tus datos serán eliminados permanentemente. Para continuar, por favor confirma tu contraseña actual.",
+    "confirm_delete_body": "Esta acción no se puede deshacer y todos tus datos se perderán para siempre. ¿Estás absolutamente seguro?",
+    "pin_prompt": "Ingresa tu PIN para confirmar la eliminación de la cuenta",
+    "success_body": "Tu cuenta ha sido eliminada exitosamente. Ahora se cerrará tu sesión."
+  },
   "scm_page": {
     "title": "Simple Cron Messenger - CronPost",
     "header": "Simple Cron Messenger (SCM)",

@@ -152,6 +152,13 @@
     "countdown_label_inactive_im": "L'IM est inactif. Activez-le pour démarrer le processus UCM.",
     "countdown_label_clc_active": "Le processus UCM est actif."
   },
+  "delete_account_page": {
+    "title": "Supprimer le compte",
+    "warning_text": "Cette action est irréversible. Toutes vos données seront définitivement supprimées. Pour continuer, veuillez confirmer votre mot de passe actuel.",
+    "confirm_delete_body": "Cette action ne peut pas être annulée et toutes vos données seront perdues à jamais. Êtes-vous absolument sûr(e) ?",
+    "pin_prompt": "Entrez votre code PIN pour confirmer la suppression du compte",
+    "success_body": "Votre compte a été supprimé avec succès. Vous allez maintenant être déconnecté(e)."
+  },
   "scm_page": {
     "title": "Messagerie Cron Simple - CronPost",
     "header": "Messagerie Cron Simple (SCM)",

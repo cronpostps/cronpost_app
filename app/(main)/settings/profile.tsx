@@ -1,7 +1,8 @@
 // app/(main)/settings/profile.tsx
-// Version: 1.3.2 (TypeScript Fixed)
+// Version: 1.3.4
 
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -186,6 +187,19 @@ const ProfileScreen = () => {
     modalSearchInput: { height: 40, borderWidth: 1, borderColor: themeColors.inputBorder, borderRadius: 8, paddingHorizontal: 10, marginBottom: 10, color: themeColors.text },
     modalItem: { paddingVertical: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: themeColors.inputBorder },
     modalItemText: { color: themeColors.text, fontSize: 16 },
+        deleteButton: {
+      backgroundColor: 'transparent',
+      padding: 15,
+      borderRadius: 8,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: '#ff453a',
+    },
+    deleteButtonText: {
+        color: '#ff453a',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
     modalItemSubText: { color: themeColors.icon, fontSize: 12 },
   });
 
@@ -221,6 +235,15 @@ const ProfileScreen = () => {
             <ProgressBar value={storedMessagesUsed} max={userData.max_stored_messages} />
             {userData.membership_type === 'premium' && (<View><View style={styles.usageRow}><Text style={styles.label}>{t('profile_page.storage_usage_label')}</Text><Text style={styles.valueText}>{`${storageUsedGB} GB / ${userData.storage_limit_gb} GB`}</Text></View><ProgressBar value={userData.uploaded_storage_bytes} max={userData.storage_limit_gb * 1024 * 1024 * 1024} /></View>)}
         </View>
+        <Text style={[styles.sectionHeader, { color: '#ff453a' }]}>{t('delete_account_page.title')}</Text>
+        <View style={styles.card}>
+            <TouchableOpacity 
+                style={styles.deleteButton}
+                onPress={() => router.push('/settings/delete-account')}
+            >
+                <Text style={styles.deleteButtonText}>{t('delete_account_page.title')}</Text>
+            </TouchableOpacity>
+        </View>        
       </ScrollView>
 
       <Modal visible={isTimezoneModalVisible} transparent={true} animationType="fade" onRequestClose={() => setTimezoneModalVisible(false)}>

@@ -152,6 +152,13 @@
     "countdown_label_inactive_im": "IM không hoạt động. Kích hoạt nó để bắt đầu quy trình UCM.",
     "countdown_label_clc_active": "Quy trình UCM đang hoạt động."
   },
+  "delete_account_page": {
+    "title": "Xóa tài khoản",
+    "warning_text": "Hành động này không thể hoàn tác. Tất cả dữ liệu của bạn sẽ bị xóa vĩnh viễn. Để tiếp tục, vui lòng xác nhận mật khẩu hiện tại của bạn.",
+    "confirm_delete_body": "Hành động này không thể được hoàn tác và tất cả dữ liệu của bạn sẽ bị mất mãi mãi. Bạn có hoàn toàn chắc chắn không?",
+    "pin_prompt": "Nhập mã PIN của bạn để xác nhận xóa tài khoản",
+    "success_body": "Tài khoản của bạn đã được xóa thành công. Bây giờ bạn sẽ được đăng xuất."
+  },
   "scm_page": {
     "title": "Simple Cron Messenger - CronPost",
     "header": "Simple Cron Messenger (SCM)",

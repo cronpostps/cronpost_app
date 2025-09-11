@@ -152,6 +152,13 @@
     "countdown_label_inactive_im": "ה-IM לא פעיל. הפעל אותו כדי להתחיל את תהליך ה-UCM.",
     "countdown_label_clc_active": "תהליך ה-UCM פעיל."
   },
+  "delete_account_page": {
+    "title": "מחיקת חשבון",
+    "warning_text": "פעולה זו אינה הפיכה. כל הנתונים שלך יימחקו לצמיתות. כדי להמשיך, אנא אשר/י את סיסמתך הנוכחית.",
+    "confirm_delete_body": "לא ניתן לבטל פעולה זו וכל הנתונים שלך יאבדו לנצח. האם אתה בטוח/ה לחלוטין?",
+    "pin_prompt": "הזן/הזיני את קוד ה-PIN שלך לאישור מחיקת החשבון",
+    "success_body": "החשבון שלך נמחק בהצלחה. כעת תנותק/י מהמערכת."
+  },
   "scm_page": {
     "title": "Simple Cron Messenger - CronPost",
     "header": "Simple Cron Messenger (SCM)",

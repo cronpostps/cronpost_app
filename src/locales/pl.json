@@ -152,6 +152,13 @@
     "countdown_label_inactive_im": "IM jest nieaktywna. Aktywuj ją, aby rozpocząć proces UCM.",
     "countdown_label_clc_active": "Proces UCM jest aktywny."
   },
+  "delete_account_page": {
+    "title": "Usuń konto",
+    "warning_text": "Ta operacja jest nieodwracalna. Wszystkie Twoje dane zostaną trwale usunięte. Aby kontynuować, potwierdź swoje obecne hasło.",
+    "confirm_delete_body": "Tej operacji nie można cofnąć, a wszystkie Twoje dane zostaną utracone na zawsze. Czy jesteś absolutnie pewien?",
+    "pin_prompt": "Wprowadź swój PIN, aby potwierdzić usunięcie konta",
+    "success_body": "Twoje konto zostało pomyślnie usunięte. Zostaniesz teraz wylogowany."
+  },
   "scm_page": {
     "title": "Simple Cron Messenger - CronPost",
     "header": "Simple Cron Messenger (SCM)",

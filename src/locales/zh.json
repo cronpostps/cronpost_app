@@ -152,6 +152,13 @@
     "countdown_label_inactive_im": "IM 处于不活跃状态。激活它以开始 UCM 流程。",
     "countdown_label_clc_active": "UCM 流程处于活跃状态。"
   },
+  "delete_account_page": {
+    "title": "删除帐户",
+    "warning_text": "此操作不可逆。您的所有数据将被永久删除。要继续，请输入您当前的密码进行确认。",
+    "confirm_delete_body": "此操作无法撤销，您的所有数据将永远丢失。您是否完全确定？",
+    "pin_prompt": "输入您的 PIN 码以确认删除帐户",
+    "success_body": "您的帐户已成功删除。您现在将被注销。"
+  },  
   "scm_page": {
     "title": "简易定时信使 - CronPost",
     "header": "简易定时信使 (SCM)",
