@@ -41,8 +41,8 @@ export default function SettingsStackLayout() {
       <Stack.Screen name="smtp" options={{ title: t('settings_page.item_smtp_title') }} />
       <Stack.Screen name="notifications" options={{ title: t('settings_page.item_notifications') }} />
       <Stack.Screen name="files" options={{ title: t('settings_page.item_files') }} />
-      <Stack.Screen name="quotes/index" options={{ title: t('settings_page.item_quotes') }} />
-      <Stack.Screen name="quotes/[folderId]" options={{ title: t('quotes_page.header') }} />
+      {/* <Stack.Screen name="quotes/index" options={{ title: t('settings_page.item_quotes') }} />
+      <Stack.Screen name="quotes/[folderId]" options={{ title: t('quotes_page.header') }} /> */}
     </Stack>
   );
 }
