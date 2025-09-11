@@ -239,7 +239,7 @@ const ProfileScreen = () => {
         <View style={styles.card}>
             <TouchableOpacity 
                 style={styles.deleteButton}
-                onPress={() => router.push('/settings/delete-account')}
+                onPress={() => router.push('delete-account')}
             >
                 <Text style={styles.deleteButtonText}>{t('delete_account_page.title')}</Text>
             </TouchableOpacity>
